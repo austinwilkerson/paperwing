@@ -1,6 +1,6 @@
 /**
- * BentoPDF desktop shell: an Acrobat-style workspace (Home, All tools and
- * tabbed document views) around BentoPDF's viewer and tool pages.
+ * Paperwing: a desktop PDF workspace (Home, All tools and tabbed document
+ * views) around the BentoPDF engine's viewer and tool pages.
  */
 import '@phosphor-icons/web/duotone';
 import { icon, toolIcon, type IconName } from './icons';
@@ -18,6 +18,15 @@ import {
   type ToolGroup,
 } from './catalog';
 import { Viewer, type PageInfo } from './viewer';
+import { desktop, isMac, key, toFile } from './desktop';
+import { checkForUpdates, scheduleUpdateCheck } from './updates';
+import {
+  applyTheme,
+  getThemePref,
+  onThemeChange,
+  setThemePref,
+  type ThemePref,
+} from '../reskin/theme';
 import {
   forgetRecent,
   listRecent,
@@ -26,6 +35,8 @@ import {
   updateRecent,
   type RecentFile,
 } from './recent';
+
+const REPO_URL = `https://github.com/${__PAPERWING_REPO__}`;
 
 /* ------------------------------------------------------------------ */
 /* DOM helpers                                                         */
@@ -235,6 +246,8 @@ interface DocTab {
   id: string;
   name: string;
   handle?: FileSystemFileHandle;
+  /** File path on disk (desktop app) */
+  path?: string;
   recentId?: string;
   starred: boolean;
   loading: boolean;
@@ -371,7 +384,7 @@ function activate(id: string) {
     renderDocChrome(tab);
   }
   renderTabs();
-  document.title = tab ? `${tab.name} - BentoPDF` : 'BentoPDF';
+  document.title = tab ? `${tab.name} - Paperwing` : 'Paperwing';
 }
 
 function closeTab(id: string) {
@@ -402,9 +415,16 @@ async function toggleStar(tab: DocTab) {
 /* Opening files                                                       */
 /* ------------------------------------------------------------------ */
 
-async function pickFiles(): Promise<
-  { file: File; handle?: FileSystemFileHandle }[]
-> {
+interface FileSource {
+  handle?: FileSystemFileHandle;
+  path?: string;
+}
+
+async function pickFiles(): Promise<({ file: File } & FileSource)[]> {
+  if (desktop) {
+    const picked = await desktop.openDialog();
+    return picked.map((f) => ({ file: toFile(f), path: f.path }));
+  }
   const picker = (window as any).showOpenFilePicker;
   if (picker) {
     try {
@@ -434,13 +454,13 @@ async function pickFiles(): Promise<
 }
 
 async function openFromDialog() {
-  for (const { file, handle } of await pickFiles())
-    await openDocument(file, handle);
+  for (const { file, ...source } of await pickFiles())
+    await openDocument(file, source);
 }
 
 async function openDocument(
   file: File,
-  handle?: FileSystemFileHandle,
+  source: FileSource = {},
   recentId?: string
 ) {
   const id = `doc-${++tabSeq}`;
@@ -450,7 +470,8 @@ async function openDocument(
     kind: 'doc',
     id,
     name: file.name,
-    handle,
+    handle: source.handle,
+    path: source.path,
     recentId,
     starred: false,
     loading: true,
@@ -475,7 +496,7 @@ async function openDocument(
   tab.page = viewer.pageInfo(id) ?? tab.page;
   if (activeId === id) renderDocChrome(tab);
 
-  tab.recentId = (await rememberFile(file, handle)) ?? recentId;
+  tab.recentId = (await rememberFile(file, source)) ?? recentId;
   const entry = (await listRecent()).find((r) => r.id === tab.recentId);
   if (entry?.starred) {
     tab.starred = true;
@@ -918,13 +939,13 @@ function renderQuickbar(tab: DocTab) {
         { divider: true },
         {
           label: 'Undo',
-          shortcut: 'Ctrl+Z',
+          shortcut: key('Ctrl+Z'),
           icon: icon('undo', 16),
           onClick: () => viewer.command(tab.id, 'history:undo'),
         },
         {
           label: 'Redo',
-          shortcut: 'Ctrl+Y',
+          shortcut: key('Ctrl+Y'),
           icon: icon('redo', 16),
           onClick: () => viewer.command(tab.id, 'history:redo'),
         },
@@ -1075,6 +1096,27 @@ async function docBlob(tab: DocTab): Promise<Blob | null> {
 async function saveDoc(tab: DocTab, saveAs = false) {
   const blob = await docBlob(tab);
   if (!blob) return;
+
+  if (desktop && !tab.handle) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    try {
+      if (!saveAs && tab.path && (await desktop.writeFile(tab.path, bytes))) {
+        toast(`Saved ${tab.name}`);
+        return;
+      }
+      const saved = await desktop.saveAs(tab.name, bytes);
+      if (!saved) return;
+      tab.path = saved.path;
+      tab.name = saved.name;
+      renderTabs();
+      toast(`Saved ${saved.name}`);
+    } catch (e) {
+      console.error(e);
+      toast(`Couldn't save ${tab.name}`);
+    }
+    return;
+  }
+
   let handle = saveAs ? undefined : tab.handle;
   const savePicker = (window as any).showSaveFilePicker;
   try {
@@ -1337,7 +1379,11 @@ async function openRecent(entry: RecentFile) {
     });
     return;
   }
-  await openDocument(got.file, got.handle, entry.id);
+  await openDocument(
+    got.file,
+    { handle: got.handle, path: got.path },
+    entry.id
+  );
 }
 
 async function refreshRecent() {
@@ -1506,7 +1552,7 @@ $('#menu-btn').addEventListener('click', (e) => {
   showMenu(e.currentTarget as HTMLElement, [
     {
       label: 'Open…',
-      shortcut: 'Ctrl+O',
+      shortcut: key('Ctrl+O'),
       icon: icon('folder', 16),
       onClick: openFromDialog,
     },
@@ -1518,14 +1564,14 @@ $('#menu-btn').addEventListener('click', (e) => {
     { divider: true },
     {
       label: 'Save',
-      shortcut: 'Ctrl+S',
+      shortcut: key('Ctrl+S'),
       icon: icon('save', 16),
       disabled: !doc,
       onClick: () => doc && saveDoc(doc),
     },
     {
       label: 'Save as…',
-      shortcut: 'Shift+Ctrl+S',
+      shortcut: key('Shift+Ctrl+S'),
       disabled: !doc,
       onClick: () => doc && saveDoc(doc, true),
     },
@@ -1537,7 +1583,7 @@ $('#menu-btn').addEventListener('click', (e) => {
     },
     {
       label: 'Print…',
-      shortcut: 'Ctrl+P',
+      shortcut: key('Ctrl+P'),
       icon: icon('print', 16),
       disabled: !doc,
       onClick: () => doc && viewer.command(doc.id, 'document:print'),
@@ -1545,14 +1591,19 @@ $('#menu-btn').addEventListener('click', (e) => {
     { divider: true },
     {
       label: 'Close tab',
-      shortcut: 'Ctrl+W',
+      shortcut: key('Ctrl+W'),
       disabled: activeId === 'home',
       onClick: () => closeTab(activeId),
     },
     { label: 'Close all tabs', disabled: !tabs.length, onClick: closeAllTabs },
     { divider: true },
+    {
+      label: 'Appearance',
+      icon: icon('theme', 16),
+      onClick: () => showThemeMenu($('#menu-btn')),
+    },
     { label: 'All tools', icon: icon('grid', 16), onClick: openAllTools },
-    { label: 'About BentoPDF', onClick: showAbout },
+    { label: 'About Paperwing', onClick: showAbout },
   ]);
 });
 
@@ -1560,18 +1611,31 @@ $('#help-btn').addEventListener('click', (e) =>
   showMenu(e.currentTarget as HTMLElement, [
     { label: 'Keyboard shortcuts', onClick: showShortcuts },
     {
-      label: 'BentoPDF on GitHub',
-      onClick: () =>
-        window.open(
-          'https://github.com/alam00000/bentopdf',
-          '_blank',
-          'noopener'
-        ),
+      label: 'Paperwing on GitHub',
+      onClick: () => window.open(REPO_URL, '_blank', 'noopener'),
+    },
+    {
+      label: 'Check for updates…',
+      onClick: () => void checkForUpdates(toast, true),
     },
     { divider: true },
-    { label: 'About BentoPDF', onClick: showAbout },
+    { label: 'About Paperwing', onClick: showAbout },
   ])
 );
+
+function showThemeMenu(anchor: HTMLElement) {
+  const current = getThemePref();
+  const opt = (pref: ThemePref, label: string): MenuItem => ({
+    label,
+    icon: pref === current ? icon('check', 16) : undefined,
+    onClick: () => setThemePref(pref),
+  });
+  showMenu(anchor, [
+    opt('system', 'Use system setting'),
+    opt('light', 'Light'),
+    opt('dark', 'Dark'),
+  ]);
+}
 
 function dialog(title: string, body: Node) {
   const backdrop = h('div', { class: 'dlg-backdrop' });
@@ -1597,21 +1661,43 @@ function dialog(title: string, body: Node) {
 }
 
 function showAbout() {
+  const link = (href: string, text: string) =>
+    h('a', { href, target: '_blank', rel: 'noopener' }, text);
   dialog(
-    'About BentoPDF',
+    'About Paperwing',
     h(
       'div',
-      { class: 'dlg-body' },
-      h('p', {}, `BentoPDF ${__APP_VERSION__} — desktop edition.`),
+      { class: 'dlg-body about' },
+      h(
+        'div',
+        { class: 'about-brand' },
+        h('span', { class: 'app-logo about-logo' }),
+        h(
+          'div',
+          {},
+          h('div', { class: 'about-name' }, 'Paperwing'),
+          h('div', { class: 'muted' }, `Version ${__PAPERWING_VERSION__}`)
+        )
+      ),
       h(
         'p',
         {},
-        'Everything runs locally on this computer. Your files are never uploaded.'
+        'A free, open-source PDF editor. Everything runs locally on this computer — your files are never uploaded.'
+      ),
+      h(
+        'p',
+        {},
+        'PDF engine: ',
+        link('https://github.com/alam00000/bentopdf', 'BentoPDF'),
+        ` ${__APP_VERSION__}, with the EmbedPDF viewer, PDFium, pdf-lib, PDF.js and other open-source projects.`
       ),
       h(
         'p',
         { class: 'muted' },
-        'Open source under the AGPL-3.0 license. Desktop interface customisation by Rohan.'
+        'Licensed under the GNU AGPL-3.0. ',
+        link(REPO_URL, 'Source code'),
+        ' · ',
+        link(`${REPO_URL}/blob/main/NOTICE.md`, 'Third-party notices')
       )
     )
   );
@@ -1619,15 +1705,15 @@ function showAbout() {
 
 function showShortcuts() {
   const rows: [string, string][] = [
-    ['Open a file', 'Ctrl+O'],
-    ['Save', 'Ctrl+S'],
-    ['Save as', 'Shift+Ctrl+S'],
-    ['Print', 'Ctrl+P'],
-    ['Find text', 'Ctrl+F'],
-    ['Find tools', 'Ctrl+K'],
-    ['Close tab', 'Ctrl+W'],
-    ['Next / previous tab', 'Ctrl+Tab / Shift+Ctrl+Tab'],
-    ['Home', 'Ctrl+Shift+H'],
+    ['Open a file', key('Ctrl+O')],
+    ['Save', key('Ctrl+S')],
+    ['Save as', key('Shift+Ctrl+S')],
+    ['Print', key('Ctrl+P')],
+    ['Find text', key('Ctrl+F')],
+    ['Find tools', key('Ctrl+K')],
+    ['Close tab', key('Ctrl+W')],
+    ['Next / previous tab', `${key('Ctrl+Tab')} / ${key('Shift+Ctrl+Tab')}`],
+    ['Home', key('Shift+Ctrl+H')],
   ];
   dialog(
     'Keyboard shortcuts',
@@ -1722,7 +1808,7 @@ window.addEventListener('drop', async (e) => {
       (hd): hd is FileSystemFileHandle =>
         hd?.kind === 'file' && hd.name === f.name
     );
-    await openDocument(f, handle);
+    await openDocument(f, { handle });
   }
   const others = files.filter((f) => !isPdf(f));
   if (others.length) await openFiles(others);
@@ -1731,32 +1817,22 @@ window.addEventListener('drop', async (e) => {
 $('#home-btn').addEventListener('click', () => activate('home'));
 
 // Frameless desktop window (WebView2 host) gets its own caption buttons
-const host = (window as any).chrome?.webview;
-if (host) {
-  document.body.classList.add('is-desktop');
-  $('#win-controls').append(
-    iconBtn(
-      'minimize',
-      'Minimize',
-      () => host.postMessage('window:minimize'),
-      'wc-btn'
-    ),
-    iconBtn(
-      'restore',
-      'Maximize',
-      () => host.postMessage('window:maximize'),
-      'wc-btn'
-    ),
-    iconBtn(
-      'close',
-      'Close',
-      () => host.postMessage('window:close'),
-      'wc-btn wc-close'
-    )
-  );
+applyTheme();
+onThemeChange(() => void desktop?.setTheme(getThemePref()));
+void desktop?.setTheme(getThemePref());
+
+// Desktop app (Electron): native title bar buttons are drawn by the OS over
+// the right (Windows) or left (macOS) end of our title bar.
+if (desktop) {
+  document.body.classList.add('is-desktop', isMac ? 'is-mac' : 'is-win');
+  desktop.onOpenFile((f) => void openDocument(toFile(f), { path: f.path }));
+  void desktop.ready();
+  scheduleUpdateCheck(toast);
 }
 
 declare const __APP_VERSION__: string;
+declare const __PAPERWING_VERSION__: string;
+declare const __PAPERWING_REPO__: string;
 
 if (import.meta.env.DEV) (window as any).__acro = { viewer, tabs };
 
@@ -1764,3 +1840,16 @@ hydrateIcons();
 renderRecommended();
 renderAllTools();
 activate('home');
+
+// Dismiss the launch screen as soon as the UI is ready. It stays up for a
+// beat on very fast starts so it reads as a splash rather than a flicker.
+{
+  const splash = document.getElementById('splash');
+  const version = document.getElementById('sp-version');
+  if (version) version.textContent = `Version ${__PAPERWING_VERSION__}`;
+  const wait = Math.max(0, 450 - performance.now());
+  setTimeout(() => {
+    splash?.classList.add('is-done');
+    setTimeout(() => splash?.remove(), 300);
+  }, wait);
+}

@@ -54,3 +54,6 @@ test
 # Sibling checkouts of the engine/viewer forks
 bentopdf-pdfium-viewer/
 bentopdf-pymupdf-wasm/
+
+# Paperwing desktop build output
+desktop/release/

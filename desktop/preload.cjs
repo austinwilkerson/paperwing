@@ -1,0 +1,22 @@
+/**
+ * Paperwing preload: exposes a minimal, explicit file bridge to the app.
+ * Only the top-level app page receives it (tool frames do not).
+ */
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('paperwing', {
+  platform: process.platform,
+  ready: () => ipcRenderer.invoke('paperwing:ready'),
+  info: () => ipcRenderer.invoke('paperwing:info'),
+  setTheme: (pref) => ipcRenderer.invoke('paperwing:set-theme', pref),
+  openDialog: () => ipcRenderer.invoke('paperwing:open-dialog'),
+  readFile: (path) => ipcRenderer.invoke('paperwing:read-file', path),
+  writeFile: (path, data) =>
+    ipcRenderer.invoke('paperwing:write-file', path, data),
+  saveAs: (name, data) => ipcRenderer.invoke('paperwing:save-as', name, data),
+  onOpenFile: (callback) => {
+    const listener = (_e, file) => callback(file);
+    ipcRenderer.on('paperwing:open-file', listener);
+    return () => ipcRenderer.removeListener('paperwing:open-file', listener);
+  },
+});

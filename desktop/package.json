@@ -1,0 +1,27 @@
+{
+  "name": "paperwing",
+  "productName": "Paperwing",
+  "version": "1.0.0",
+  "description": "A free, open-source PDF editor for Windows and macOS, powered by the BentoPDF engine.",
+  "main": "main.cjs",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "author": "Rohan Vijaykumar",
+  "homepage": "https://github.com/rohanvijaykumar/paperwing",
+  "paperwing": {
+    "repository": "rohanvijaykumar/paperwing"
+  },
+  "scripts": {
+    "build:web": "node scripts/build-web.mjs",
+    "start": "electron .",
+    "dev": "node scripts/build-web.mjs && electron .",
+    "dist:win": "node scripts/build-web.mjs && electron-builder --win --publish never",
+    "dist:mac": "node scripts/build-web.mjs && electron-builder --mac --publish never",
+    "dist:linux": "node scripts/build-web.mjs && electron-builder --linux --publish never",
+    "pack": "electron-builder --dir --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.4.5",
+    "electron-builder": "26.16.1"
+  }
+}

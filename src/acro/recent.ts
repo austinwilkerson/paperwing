@@ -1,3 +1,5 @@
+import { desktop } from './desktop';
+
 /**
  * Recent / starred files, kept in IndexedDB on this machine only.
  * Files opened through the File System Access API are remembered by handle
@@ -11,6 +13,8 @@ export interface RecentFile {
   openedAt: number;
   starred: boolean;
   handle?: FileSystemFileHandle;
+  /** Path on disk (desktop app) */
+  path?: string;
   data?: Blob;
 }
 
@@ -56,19 +60,26 @@ export async function listRecent(): Promise<RecentFile[]> {
 /** Record that a file was opened; returns the entry id */
 export async function rememberFile(
   file: File,
-  handle?: FileSystemFileHandle
+  source: { handle?: FileSystemFileHandle; path?: string } = {}
 ): Promise<string | undefined> {
+  const { handle, path } = source;
   try {
     const all = await listRecent();
     let existing: RecentFile | undefined;
     for (const r of all) {
+      if (path && r.path === path) {
+        existing = r;
+        break;
+      }
       if (handle && r.handle && (await r.handle.isSameEntry(handle))) {
         existing = r;
         break;
       }
       if (
         !handle &&
+        !path &&
         !r.handle &&
+        !r.path &&
         r.name === file.name &&
         r.size === file.size
       ) {
@@ -83,7 +94,8 @@ export async function rememberFile(
       openedAt: Date.now(),
       starred: existing?.starred ?? false,
       handle,
-      data: !handle && file.size <= MAX_COPY_BYTES ? file : undefined,
+      path,
+      data: !handle && !path && file.size <= MAX_COPY_BYTES ? file : undefined,
     };
     await tx('readwrite', (s) => s.put(entry));
 
@@ -119,9 +131,22 @@ export async function forgetRecent(id: string): Promise<void> {
 }
 
 /** Get the file back from disk (asks for permission) or from the stored copy */
-export async function reopenRecent(
-  entry: RecentFile
-): Promise<{ file: File; handle?: FileSystemFileHandle } | null> {
+export async function reopenRecent(entry: RecentFile): Promise<{
+  file: File;
+  handle?: FileSystemFileHandle;
+  path?: string;
+} | null> {
+  if (entry.path && desktop) {
+    const data = await desktop.readFile(entry.path);
+    if (data) {
+      return {
+        file: new File([new Uint8Array(data)], entry.name, {
+          type: 'application/pdf',
+        }),
+        path: entry.path,
+      };
+    }
+  }
   if (entry.handle) {
     try {
       const h = entry.handle as FileSystemFileHandle & {

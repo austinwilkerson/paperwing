@@ -27,7 +27,16 @@ export function reskinPlugin(): Plugin {
       if (input && typeof input === 'object' && !Array.isArray(input)) {
         (input as Record<string, string>).app = resolve(root, APP_ENTRY);
       }
-      return { define: { __APP_VERSION__: JSON.stringify(version) } };
+      const desktopPkg = JSON.parse(
+        readFileSync(resolve(root, 'desktop', 'package.json'), 'utf8')
+      );
+      return {
+        define: {
+          __APP_VERSION__: JSON.stringify(version),
+          __PAPERWING_VERSION__: JSON.stringify(desktopPkg.version),
+          __PAPERWING_REPO__: JSON.stringify(desktopPkg.paperwing.repository),
+        },
+      };
     },
 
     transformIndexHtml: {

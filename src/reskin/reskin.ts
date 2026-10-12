@@ -12,6 +12,11 @@
  *   tool  -> shell { type: 'acro:download', blob: Blob, name: string }
  */
 
+import { applyTheme, onThemeChange } from './theme';
+
+applyTheme();
+onThemeChange(() => {});
+
 const embedded = window.self !== window.top;
 
 if (embedded) {

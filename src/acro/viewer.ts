@@ -5,6 +5,67 @@
  */
 import type { EmbedPdfContainer, PluginRegistry } from 'bentopdf-viewer';
 import { editorFontFallback } from '../js/config/editor-fonts.js';
+import { getThemePref, onThemeChange } from '../reskin/theme';
+
+/** Acrobat-like neutral greys for both themes */
+function viewerTheme() {
+  return {
+    preference: getThemePref(),
+    light: {
+      background: {
+        app: '#f8f8f8',
+        surface: '#ffffff',
+        surfaceAlt: '#f5f5f5',
+        elevated: '#ffffff',
+        input: '#ffffff',
+      },
+      accent: {
+        primary: '#3b63fb',
+        primaryHover: '#274dea',
+        primaryActive: '#1d3ecf',
+        primaryLight: '#edf1ff',
+        primaryForeground: '#ffffff',
+      },
+    },
+    dark: {
+      background: {
+        app: '#141414',
+        surface: '#222222',
+        surfaceAlt: '#1c1c1c',
+        elevated: '#2a2a2a',
+        overlay: 'rgba(0,0,0,0.6)',
+        input: '#1c1c1c',
+      },
+      foreground: {
+        primary: '#ededed',
+        secondary: '#c9c9c9',
+        muted: '#9c9c9c',
+        disabled: '#666666',
+        onAccent: '#ffffff',
+      },
+      border: { default: '#333333', subtle: '#2a2a2a', strong: '#4a4a4a' },
+      accent: {
+        primary: '#5c7cff',
+        primaryHover: '#7590ff',
+        primaryActive: '#4a69ef',
+        primaryLight: '#242a3d',
+        primaryForeground: '#ffffff',
+      },
+      interactive: {
+        hover: '#2f2f2f',
+        active: '#3a3a3a',
+        selected: '#2c3350',
+        focus: '#5c7cff',
+        focusRing: 'rgba(92,124,255,0.4)',
+      },
+      scrollbar: {
+        track: 'transparent',
+        thumb: '#4a4a4a',
+        thumbHover: '#5e5e5e',
+      },
+    },
+  };
+}
 
 const wasmUrl = new URL('bentopdf-pdfium/editcore.wasm', import.meta.url).href;
 
@@ -47,25 +108,10 @@ export class Viewer {
         fontFallback: editorFontFallback,
         tabBar: 'never',
         documentManager: { maxDocuments: 50 },
-        theme: {
-          preference: 'light',
-          light: {
-            background: {
-              app: '#f0f0f0',
-              surface: '#ffffff',
-              surfaceAlt: '#f5f5f5',
-            },
-            accent: {
-              primary: '#3b63fb',
-              primaryHover: '#274dea',
-              primaryActive: '#1d3ecf',
-              primaryLight: '#edf1ff',
-              primaryForeground: '#ffffff',
-            },
-          },
-        },
+        theme: viewerTheme(),
       } as any) as EmbedPdfContainer;
       this.registry = await (this.container as any).registry;
+      onThemeChange(() => (this.container as any)?.setTheme?.(viewerTheme()));
 
       const dm = this.cap('document-manager');
       dm.onDocumentOpened((doc: { id: string; name?: string }) => {

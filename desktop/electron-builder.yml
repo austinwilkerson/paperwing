@@ -1,0 +1,97 @@
+# Paperwing desktop packaging (https://www.electron.build)
+appId: app.paperwing.desktop
+productName: Paperwing
+copyright: Copyright © 2026 Rohan Vijaykumar · PDF engine © BentoPDF contributors
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - main.cjs
+  - preload.cjs
+  - package.json
+
+# The web app (built from the repository root into ../dist) ships unpacked
+# next to the executable and is served through the app:// protocol.
+extraResources:
+  - from: ../dist
+    to: web
+    filter:
+      - '**/*'
+      - '!**/*.map'
+      - '!**/*.gz'
+      - '!**/*.br'
+  - from: ../LICENSE
+    to: LICENSE.txt
+  - from: ../NOTICE.md
+    to: NOTICE.md
+
+fileAssociations:
+  - ext: pdf
+    name: PDF Document
+    description: PDF Document
+    mimeType: application/pdf
+    role: Editor
+
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+    - target: zip
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Paperwing
+  artifactName: ${productName}-Setup-${version}-x64.${ext}
+  license: ../LICENSE
+
+portable:
+  artifactName: ${productName}-Portable-${version}-x64.${ext}
+
+mac:
+  icon: build/icon.png
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  # Ad-hoc signed (no Apple Developer ID). Set CSC_LINK/CSC_KEY_PASSWORD and
+  # replace identity to ship a notarised build.
+  identity: '-'
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    NSDocumentsFolderUsageDescription: Paperwing opens and saves PDF files you choose.
+    NSDownloadsFolderUsageDescription: Paperwing saves exported files to your Downloads folder.
+
+dmg:
+  title: ${productName} ${version}
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
+  contents:
+    - x: 140
+      y: 190
+    - x: 400
+      y: 190
+      type: link
+      path: /Applications
+
+linux:
+  icon: build/icon.png
+  category: Office
+  target:
+    - AppImage
+  synopsis: Free, open-source PDF editor

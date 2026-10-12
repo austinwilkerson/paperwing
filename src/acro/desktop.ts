@@ -1,0 +1,53 @@
+/**
+ * Bridge to the Electron shell (desktop/preload.cjs). Undefined when the app
+ * runs in a normal browser, where the File System Access API is used instead.
+ */
+
+export interface DesktopFile {
+  path: string;
+  name: string;
+  data: Uint8Array;
+}
+
+export interface DesktopInfo {
+  version: string;
+  platform: string;
+  portable: boolean;
+  repository: string;
+}
+
+interface DesktopBridge {
+  platform: string;
+  ready(): Promise<void>;
+  info(): Promise<DesktopInfo>;
+  setTheme(pref: 'system' | 'light' | 'dark'): Promise<void>;
+  openDialog(): Promise<DesktopFile[]>;
+  readFile(path: string): Promise<Uint8Array | null>;
+  writeFile(path: string, data: Uint8Array): Promise<boolean>;
+  saveAs(
+    name: string,
+    data: Uint8Array
+  ): Promise<{ path: string; name: string } | null>;
+  onOpenFile(callback: (file: DesktopFile) => void): () => void;
+}
+
+export const desktop: DesktopBridge | undefined = (window as any).paperwing;
+
+export const isMac = desktop
+  ? desktop.platform === 'darwin'
+  : /Mac|iPhone|iPad/.test(navigator.platform);
+
+/** Shortcut label helpers: "Ctrl+S" on Windows, "⌘S" on macOS */
+export const key = (combo: string) =>
+  isMac
+    ? combo
+        .replace(/Shift\+/g, '⇧')
+        .replace(/Ctrl\+/g, '⌘')
+        .replace(/Alt\+/g, '⌥')
+    : combo;
+
+export function toFile(f: DesktopFile): File {
+  return new File([new Uint8Array(f.data)], f.name, {
+    type: 'application/pdf',
+  });
+}

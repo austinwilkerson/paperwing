@@ -43,6 +43,8 @@ import {
   ZoomIn,
   ZoomOut,
   Copy,
+  Check,
+  SunMoon,
   type IconNode,
 } from 'lucide';
 
@@ -89,6 +91,8 @@ const ICONS = {
   zoomIn: ZoomIn,
   zoomOut: ZoomOut,
   restore: Copy,
+  check: Check,
+  theme: SunMoon,
 } satisfies Record<string, IconNode>;
 
 export type IconName = keyof typeof ICONS;
