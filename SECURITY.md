@@ -20,20 +20,18 @@ qpdf), we'll coordinate with the upstream maintainers.
 ## Security model
 
 - All documents are processed locally. Paperwing has no servers, accounts or telemetry.
-- The app's pages are served from a private `app://` origin with cross-origin isolation; the renderer
+- The app's pages are served from private `app://` origins with cross-origin isolation; the renderer
   runs sandboxed with context isolation, and only a small, explicit file bridge is exposed to it
   (`desktop/preload.cjs`). The bridge handles PDF files only, and only writes back to files the
   user opened or saved through Paperwing (via a temporary file, so a crash can't corrupt them).
+- Only the workspace page (`app://paperwing`) gets the bridge. BentoPDF's tool pages run in frames
+  on a separate origin (`app://tools`), so the same-origin policy keeps them — and anything a
+  crafted PDF might inject into them — away from the workspace and the bridge. Files and results
+  are exchanged with `postMessage`, and both sides check the origin and sender of every message.
+  The workspace origin serves no other pages, and frames can't be navigated to it.
 - Permission requests (camera, microphone, location, notifications…) are denied.
 - Links to websites open in your default browser, never inside the app, and neither the app nor
   its tool frames can navigate away from it.
 - Network access is limited to the optional update check and on-demand engine downloads described
   in the [README](README.md#privacy). Downloaded engine files are checked against SHA-256 hashes
   built into the app before they're used.
-
-### Known limitation
-
-BentoPDF's tool pages run in frames on the same `app://` origin as the workspace, so a flaw in a
-tool page (for example, script injection through a crafted PDF) could reach the file bridge. The
-bridge is kept deliberately narrow for this reason. Serving the tool pages from a separate origin
-is planned.

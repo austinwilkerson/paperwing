@@ -471,4 +471,55 @@ describe('Paperwing UI', () => {
       false
     );
   });
+
+  test('tool frames follow the theme, and only tool frames are listened to', async () => {
+    await page.evaluate(() => localStorage.removeItem('paperwing:session'));
+    await openApp('light');
+    await dropPdf('Report.pdf');
+    await page.evaluate(() =>
+      [...document.querySelectorAll('.lp-tool')]
+        .find((b) => b.textContent.includes('Compress'))
+        .click()
+    );
+    const handle = await page.waitForSelector('#left-panel iframe');
+    assert.match(await handle.evaluate((f) => f.src), /[?&]theme=system\b/);
+    const content = await handle.contentFrame();
+    await content.waitForFunction(() =>
+      document.documentElement.classList.contains('rs-embedded')
+    );
+
+    // Changing the theme in the workspace reaches the tool
+    await page.keyboard.down('Control');
+    await page.keyboard.press('KeyK');
+    await page.keyboard.up('Control');
+    await page.select('.pref-select', 'dark');
+    await content.waitForFunction(
+      () => document.documentElement.dataset.theme === 'dark'
+    );
+    await page.select('.pref-select', 'system');
+    await content.waitForFunction(
+      () => document.documentElement.dataset.theme === undefined
+    );
+    await page.evaluate(() =>
+      document.querySelector('.dlg-backdrop')?.remove()
+    );
+
+    // Tool messages from anything but a tool frame are ignored
+    const tabs = (await tabNames()).length;
+    await page.evaluate(() => {
+      const blob = new Blob(['%PDF-1.4'], { type: 'application/pdf' });
+      window.postMessage({ type: 'acro:download', blob, name: 'x.pdf' }, '*');
+      window.postMessage(
+        {
+          type: 'acro:key',
+          editing: false,
+          key: { key: 'k', code: 'KeyK', ctrlKey: true },
+        },
+        '*'
+      );
+    });
+    await sleep(500);
+    assert.equal(await page.$('.dlg-backdrop'), null, 'forged key ignored');
+    assert.equal((await tabNames()).length, tabs, 'forged download ignored');
+  });
 });

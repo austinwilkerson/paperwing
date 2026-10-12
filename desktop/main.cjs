@@ -34,8 +34,15 @@ const trace = process.env.PAPERWING_TRACE
 const pkg = require('./package.json');
 
 const SCHEME = 'app';
+/** The workspace page (app.html), the only page given the file bridge */
 const HOST = 'paperwing';
 const ORIGIN = `${SCHEME}://${HOST}`;
+/**
+ * BentoPDF's tool pages, on an origin of their own so the same-origin policy
+ * keeps them away from the workspace page and its bridge. The two talk only
+ * via postMessage. (Keep in sync with src/reskin/origins.ts.)
+ */
+const TOOLS_HOST = 'tools';
 const IS_MAC = process.platform === 'darwin';
 
 /* ------------------------------------------------------------------ */
@@ -135,6 +142,8 @@ app.on('open-file', (e, filePath) => {
 /* app:// protocol                                                     */
 /* ------------------------------------------------------------------ */
 
+// A standard scheme, so each host is its own origin: app://paperwing (the
+// workspace) and app://tools (tool pages) can't script each other.
 protocol.registerSchemesAsPrivileged([
   {
     scheme: SCHEME,
@@ -183,29 +192,42 @@ const MIME = {
 
 const SECURITY_HEADERS = {
   // Same isolation policy as upstream's nginx config: enables
-  // SharedArrayBuffer for the multi-threaded WebAssembly engines.
+  // SharedArrayBuffer for the multi-threaded WebAssembly engines. Both
+  // origins send it; the workspace delegates isolation to its cross-origin
+  // tool frames (allow="cross-origin-isolated"), which CORP lets it embed.
   'Cross-Origin-Opener-Policy': 'same-origin',
   'Cross-Origin-Embedder-Policy': 'credentialless',
   'Cross-Origin-Resource-Policy': 'cross-origin',
   'X-Content-Type-Options': 'nosniff',
 };
 
+const APP_PAGE = path.join(WEB_ROOT, 'app.html');
+
 function resolveRequestPath(url) {
+  let host;
   let pathname;
   try {
-    pathname = decodeURIComponent(new URL(url).pathname);
+    const parsed = new URL(url);
+    host = parsed.host;
+    pathname = decodeURIComponent(parsed.pathname);
   } catch {
     return null; // malformed URL
   }
-  if (pathname === '/' || pathname === '') pathname = '/app.html';
-  const file = path.normalize(path.join(WEB_ROOT, pathname));
+  if (host !== HOST && host !== TOOLS_HOST) return null;
+  if ((pathname === '/' || pathname === '') && host === HOST)
+    pathname = '/app.html';
+  let file = path.normalize(path.join(WEB_ROOT, pathname));
   // Path traversal: must stay inside the web folder
   if (file !== WEB_ROOT && !file.startsWith(WEB_ROOT + path.sep)) return null;
   if (fs.existsSync(file) && fs.statSync(file).isDirectory()) {
-    return path.join(file, 'index.html');
+    file = path.join(file, 'index.html');
+  } else if (!path.extname(file) && fs.existsSync(`${file}.html`)) {
+    file = `${file}.html`;
   }
-  if (!path.extname(file) && fs.existsSync(`${file}.html`))
-    return `${file}.html`;
+  // Each origin serves only its own pages: tool pages never run on the
+  // workspace origin (where the bridge is), nor the workspace on the tools one
+  if (/\.html?$/i.test(file) && (file === APP_PAGE) !== (host === HOST))
+    return null;
   return file;
 }
 
@@ -495,17 +517,17 @@ function createWindow() {
     if (/^https?:\/\//.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
-  mainWindow.webContents.on('will-navigate', (e, url) => {
-    if (!url.startsWith(ORIGIN)) {
-      e.preventDefault();
-      if (/^https?:\/\//.test(url)) shell.openExternal(url);
-    }
+  // The window only shows the workspace page, and only the workspace itself
+  // may (re)load it: a tool frame can't navigate it anywhere
+  mainWindow.webContents.on('will-navigate', (e) => {
+    if (isWorkspaceUrl(e.url) && isWorkspaceFrame(e.initiator)) return;
+    e.preventDefault();
+    if (/^https?:\/\//.test(e.url)) shell.openExternal(e.url);
   });
 
   // Tool frames stay inside the app too
   mainWindow.webContents.on('will-frame-navigate', (e) => {
-    if (e.isMainFrame || /^(app:\/\/paperwing|blob:|data:|about:)/.test(e.url))
-      return;
+    if (e.isMainFrame || frameMayLoad(e.url, e.initiator)) return;
     e.preventDefault();
     if (/^https?:\/\//.test(e.url)) shell.openExternal(e.url);
   });
@@ -519,22 +541,54 @@ function createWindow() {
   }, 12000);
 }
 
+/** "app://host/…" or "blob:app://host/…" -> "host", otherwise null */
+function appHost(url) {
+  const m = /^(?:blob:)?app:\/\/([^/?#]*)/i.exec(url);
+  return m ? m[1].toLowerCase() : null;
+}
+
+const isWorkspaceUrl = (url) => /^app:\/\/paperwing(?:[/?#]|$)/i.test(url);
+
+/** The window's top-level frame, showing the workspace */
+function isWorkspaceFrame(frame) {
+  try {
+    return (
+      !!frame &&
+      !!mainWindow &&
+      frame === mainWindow.webContents.mainFrame &&
+      frame.origin === ORIGIN
+    );
+  } catch {
+    return false; // frame already gone
+  }
+}
+
+/**
+ * What a frame inside the window may load: tool pages, and documents with
+ * no origin of their own (about:, data:). Never the workspace origin, where
+ * the bridge lives, apart from the viewer's own print frame (a blob: PDF the
+ * workspace creates).
+ */
+function frameMayLoad(url, initiator) {
+  if (/^(about|data):/i.test(url)) return true;
+  const host = appHost(url);
+  if (host === TOOLS_HOST) return true;
+  if (host === HOST && /^blob:/i.test(url)) return isWorkspaceFrame(initiator);
+  return false;
+}
+
 /* ------------------------------------------------------------------ */
 /* IPC bridge (see preload.cjs)                                        */
 /* ------------------------------------------------------------------ */
 
 /**
- * Requests must come through the workspace page's own bridge. (Tool pages are
- * same-origin frames, so they can reach that bridge via window.top; the bridge
- * is therefore kept narrow: PDFs only, and writes only to files the user
- * opened or saved.)
+ * Requests must come through the workspace page's own bridge. Tool pages are
+ * cross-origin frames (app://tools), so they can't reach it via window.top.
+ * The bridge stays narrow anyway: PDFs only, and writes only to files the
+ * user opened or saved.
  */
 function senderIsApp(e) {
-  return (
-    !!mainWindow &&
-    e.senderFrame === mainWindow.webContents.mainFrame &&
-    e.senderFrame.url.startsWith(ORIGIN)
-  );
+  return !!e.senderFrame && isWorkspaceFrame(e.senderFrame);
 }
 
 /** Write via a temporary file, so a crash can't leave a half-written PDF */

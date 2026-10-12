@@ -1,6 +1,8 @@
 /**
- * Light/dark theme preference shared by the Paperwing shell and every tool
- * page (they are same-origin, so they share localStorage).
+ * Light/dark theme preference of the Paperwing shell and every tool page.
+ * The shell owns it; embedded tool pages are told it (?theme= on load, then
+ * 'acro:theme' messages, see reskin.ts) because in the desktop app they run
+ * on their own origin and can't read the shell's localStorage.
  *
  * "system" follows the OS. The resolved theme is exposed as
  * <html data-theme="light|dark"> only when the user overrides the system;
@@ -12,6 +14,9 @@ export type ThemePref = 'system' | 'light' | 'dark';
 const KEY = 'paperwing:theme';
 const EVENT = 'paperwing:themechange';
 const media = window.matchMedia('(prefers-color-scheme: dark)');
+
+export const isThemePref = (v: unknown): v is ThemePref =>
+  v === 'system' || v === 'light' || v === 'dark';
 
 export function getThemePref(): ThemePref {
   try {
@@ -52,6 +57,6 @@ export function onThemeChange(callback: () => void) {
   };
   media.addEventListener('change', run);
   window.addEventListener(EVENT, run);
-  // Another document (shell or a tool frame) changed the preference
+  // Another same-origin document changed the preference
   window.addEventListener('storage', (e) => e.key === KEY && run());
 }

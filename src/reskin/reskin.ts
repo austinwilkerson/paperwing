@@ -2,40 +2,59 @@
  * Runs on every upstream tool page. When the page is hosted inside the
  * desktop shell (app.html) it:
  *  - hides the standalone page chrome (navbar, footer, back button),
+ *  - follows the shell's light/dark theme,
  *  - accepts files sent by the shell and feeds them to the tool's file input,
  *  - hands generated downloads back to the shell instead of saving them, so
  *    results can open as a new document tab.
  *
- * Message protocol (same-origin postMessage):
+ * In the desktop app the shell and the tool pages are on different origins
+ * (see origins.ts), so everything goes through postMessage, and both sides
+ * check the origin and source of every message:
  *   shell -> tool  { type: 'acro:load-files', files: File[] }
+ *   shell -> tool  { type: 'acro:theme', pref: ThemePref }
+ *   shell -> tool  { type: 'acro:edit', command: 'undo' | 'redo' }
  *   tool  -> shell { type: 'acro:ready' }
  *   tool  -> shell { type: 'acro:download', blob: Blob, name: string }
+ *   tool  -> shell { type: 'acro:key', key: KeyInput, editing: boolean }
  */
 
-import { applyTheme, onThemeChange } from './theme';
+import { applyTheme, isThemePref, onThemeChange, setThemePref } from './theme';
 import { initApps } from './apps';
 import { initFrames } from './frames';
+import { shellOrigin } from './origins';
 
 /** Page id for page-specific styling, e.g. <html data-page="sign-pdf"> */
 document.documentElement.dataset.page =
   (location.pathname.split('/').pop() || 'index').replace(/\.html$/, '') ||
   'index';
 
+const embedded = window.self !== window.top;
+/** The shell hosting this page (null when standalone or embedded elsewhere) */
+const shell = shellOrigin();
+const params = new URLSearchParams(location.search);
+
+// The shell passes its theme in the URL, so the page starts out right
+const initialTheme = params.get('theme');
+if (shell && isThemePref(initialTheme)) setThemePref(initialTheme);
+
 applyTheme();
 onThemeChange(() => {});
 initApps();
 initFrames();
 
-const embedded = window.self !== window.top;
-
 if (embedded) {
   document.documentElement.classList.add('rs-embedded');
   // The shell says whether this tool sits in the side panel or the
   // document area (?embed=panel|full)
-  const mode = new URLSearchParams(location.search).get('embed');
+  const mode = params.get('embed');
   if (mode === 'full' || mode === 'panel') {
     document.documentElement.classList.add(`rs-${mode}`);
   }
+}
+
+if (shell) {
+  const toShell = (message: unknown) =>
+    window.parent.postMessage(message, shell);
 
   // downloadFile() and friends revoke the object URL right after click(), so
   // remember which blob each URL points to.
@@ -53,19 +72,24 @@ if (embedded) {
       ? blobsByUrl.get(this.href)
       : undefined;
     if (!blob) return nativeClick.call(this);
-    window.parent.postMessage(
-      {
-        type: 'acro:download',
-        blob,
-        name: this.download || 'download',
-      },
-      location.origin
-    );
+    toShell({ type: 'acro:download', blob, name: this.download || 'download' });
   };
 
   window.addEventListener('message', (e: MessageEvent) => {
-    if (e.origin !== location.origin || e.source !== window.parent) return;
-    if (e.data?.type === 'acro:load-files') loadFiles(e.data.files as File[]);
+    if (e.origin !== shell || e.source !== window.parent) return;
+    const data = e.data;
+    if (data?.type === 'acro:load-files' && Array.isArray(data.files)) {
+      loadFiles(data.files.filter((f: unknown) => f instanceof File));
+    } else if (data?.type === 'acro:theme' && isThemePref(data.pref)) {
+      setThemePref(data.pref);
+    } else if (
+      data?.type === 'acro:edit' &&
+      (data.command === 'undo' || data.command === 'redo')
+    ) {
+      // macOS Edit menu: text undo/redo in the focused field
+      const focused = document.activeElement as HTMLElement | null;
+      if (isEditable(focused)) document.execCommand(data.command);
+    }
   });
 
   // App-level shortcuts (Ctrl+S, Ctrl+W, Ctrl+Tab, F4...) still work while
@@ -74,25 +98,19 @@ if (embedded) {
     if (e.defaultPrevented) return;
     const mod = e.ctrlKey || e.metaKey || e.altKey;
     if (!mod && !/^F\d{1,2}$/.test(e.key)) return;
-    const t = e.target as HTMLElement | null;
-    const editing =
-      !!t &&
-      (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
-    window.parent.postMessage(
-      {
-        type: 'acro:key',
-        editing,
-        key: {
-          key: e.key,
-          code: e.code,
-          ctrlKey: e.ctrlKey,
-          metaKey: e.metaKey,
-          shiftKey: e.shiftKey,
-          altKey: e.altKey,
-        },
+    const editing = isEditable(e.target as HTMLElement | null);
+    toShell({
+      type: 'acro:key',
+      editing,
+      key: {
+        key: e.key,
+        code: e.code,
+        ctrlKey: e.ctrlKey,
+        metaKey: e.metaKey,
+        shiftKey: e.shiftKey,
+        altKey: e.altKey,
       },
-      location.origin
-    );
+    });
     // Stop the browser acting on app shortcuts (e.g. Ctrl+P printing the tool)
     if (
       mod &&
@@ -103,10 +121,16 @@ if (embedded) {
     }
   });
 
-  const announceReady = () =>
-    window.parent.postMessage({ type: 'acro:ready' }, location.origin);
+  const announceReady = () => toShell({ type: 'acro:ready' });
   if (document.readyState === 'complete') announceReady();
   else window.addEventListener('load', announceReady);
+}
+
+function isEditable(el: HTMLElement | null): boolean {
+  return (
+    !!el &&
+    (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))
+  );
 }
 
 function findFileInput(): HTMLInputElement | null {

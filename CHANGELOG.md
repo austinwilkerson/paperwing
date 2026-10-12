@@ -27,6 +27,7 @@ First public release, built on BentoPDF 2.8.8.
 - Launch screen that appears on its own before the main window, and background warm-up of the PDF engine for fast first open
 - Small download: the LibreOffice engine for Office → PDF conversion is fetched once on first use (SHA-256 verified), and unused Chromium files are trimmed
 - Automatic default zoom (fit width, up to 150%), configurable in Preferences
+- Tool pages run on their own origin, isolated from the workspace and its file bridge (see [SECURITY.md](SECURITY.md))
 - Unit tests for the shell and an end-to-end UI test suite
 
 [1.0.0]: https://github.com/rohanvijaykumar/paperwing/releases/tag/v1.0.0

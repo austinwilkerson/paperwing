@@ -30,7 +30,13 @@ import {
   toolForFile,
 } from '../acro/catalog';
 import { getPrefs, noteToolUsed, setPrefs, togglePinned } from '../acro/prefs';
-import { getThemePref, setThemePref } from '../reskin/theme';
+import { getThemePref, isThemePref, setThemePref } from '../reskin/theme';
+import {
+  SHELL_ORIGIN,
+  TOOLS_ORIGIN,
+  shellOrigin,
+  toolsOrigin,
+} from '../reskin/origins';
 
 const key = (k: Partial<KeyInput> & { key: string }): KeyInput => ({
   code: '',
@@ -243,5 +249,29 @@ describe('theme preference', () => {
     expect(document.documentElement.dataset.theme).toBe('light');
     setThemePref('system');
     expect(document.documentElement.dataset.theme).toBeUndefined();
+  });
+
+  it('only accepts known preferences from messages and URLs', () => {
+    expect(['system', 'light', 'dark'].every(isThemePref)).toBe(true);
+    expect(isThemePref('blue')).toBe(false);
+    expect(isThemePref(null)).toBe(false);
+    expect(isThemePref({ toString: () => 'dark' })).toBe(false);
+  });
+});
+
+describe('origins', () => {
+  it('keeps the workspace and tool pages on separate desktop origins', () => {
+    expect(SHELL_ORIGIN).not.toBe(TOOLS_ORIGIN);
+    expect(new URL(TOOLS_ORIGIN).protocol).toBe(new URL(SHELL_ORIGIN).protocol);
+  });
+
+  it('loads tools from the same origin when served from a web server', () => {
+    expect(location.origin).not.toBe(SHELL_ORIGIN);
+    expect(toolsOrigin()).toBe(location.origin);
+  });
+
+  it('has no shell to talk to when not embedded', () => {
+    expect(window.self).toBe(window.top);
+    expect(shellOrigin()).toBeNull();
   });
 });

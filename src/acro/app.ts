@@ -42,6 +42,7 @@ import {
   setThemePref,
   type ThemePref,
 } from '../reskin/theme';
+import { toolsOrigin } from '../reskin/origins';
 import {
   forgetRecent,
   listRecent,
@@ -646,17 +647,39 @@ async function openFiles(files: File[]) {
 /* ------------------------------------------------------------------ */
 
 const frameTools = new Set<FrameTool>();
+/** Tool pages run on their own origin in the desktop app (see origins.ts) */
+const TOOLS_ORIGIN = toolsOrigin();
+
+/** The tool frame a message came from, if it really came from one */
+function frameToolFor(e: MessageEvent): FrameTool | undefined {
+  if (e.origin !== TOOLS_ORIGIN || !e.source) return undefined;
+  return [...frameTools].find((t) => t.frame.contentWindow === e.source);
+}
+
+function postToFrame(ft: FrameTool, message: unknown) {
+  ft.frame.contentWindow?.postMessage(message, TOOLS_ORIGIN);
+}
 
 function createFrameTool(
   tool: AppTool,
   files: File[],
   owner: string
 ): FrameTool {
+  const src = new URL(
+    tool.href!,
+    TOOLS_ORIGIN === location.origin ? location.href : `${TOOLS_ORIGIN}/`
+  );
+  // Whether it's in the side panel or the document area, and the theme
+  src.searchParams.set('embed', tool.full ? 'full' : 'panel');
+  src.searchParams.set('theme', getThemePref());
   const frame = h('iframe', {
     class: 'tool-frame',
-    // Tells the page whether it's in the side panel or the document area
-    src: `${tool.href}?embed=${tool.full ? 'full' : 'panel'}`,
+    src: src.href,
     title: tool.name,
+    // A cross-origin frame needs these delegated: cross-origin isolation
+    // (SharedArrayBuffer for the multi-threaded engines), clipboard, and
+    // full screen
+    allow: 'cross-origin-isolated; clipboard-read; clipboard-write; fullscreen',
   });
   const ft: FrameTool = {
     tool,
@@ -677,16 +700,15 @@ function disposeFrameTool(ft?: FrameTool) {
 }
 
 window.addEventListener('message', async (e: MessageEvent) => {
-  if (e.origin !== location.origin) return;
-  const ft = [...frameTools].find((t) => t.frame.contentWindow === e.source);
+  const ft = frameToolFor(e);
   if (!ft) return;
-  if (e.data?.type === 'acro:ready' && ft.files.length) {
-    ft.frame.contentWindow!.postMessage(
-      { type: 'acro:load-files', files: ft.files },
-      location.origin
-    );
-  } else if (e.data?.type === 'acro:download') {
-    const blob = e.data.blob as Blob;
+  if (e.data?.type === 'acro:ready') {
+    // The theme may have changed since the frame's URL was made
+    postToFrame(ft, { type: 'acro:theme', pref: getThemePref() });
+    if (ft.files.length)
+      postToFrame(ft, { type: 'acro:load-files', files: ft.files });
+  } else if (e.data?.type === 'acro:download' && e.data.blob instanceof Blob) {
+    const blob = e.data.blob;
     const name = uniqueTabName(String(e.data.name || 'download'));
     if (isPdf({ name, type: blob.type })) {
       const file = new File([blob], name, { type: 'application/pdf' });
@@ -2869,9 +2891,19 @@ window.addEventListener(
 
 // Tool frames forward shortcut keys they don't use (see reskin.ts)
 window.addEventListener('message', (e: MessageEvent) => {
-  if (e.origin !== location.origin || e.data?.type !== 'acro:key') return;
+  if (e.data?.type !== 'acro:key' || !frameToolFor(e)) return;
   if (document.querySelector('.dlg-backdrop')) return;
-  handleKey(e.data.key as KeyInput, !!e.data.editing, true);
+  const k = e.data.key;
+  if (typeof k?.key !== 'string') return;
+  const input: KeyInput = {
+    key: k.key,
+    code: String(k.code ?? ''),
+    ctrlKey: !!k.ctrlKey,
+    metaKey: !!k.metaKey,
+    shiftKey: !!k.shiftKey,
+    altKey: !!k.altKey,
+  };
+  handleKey(input, !!e.data.editing, true);
 });
 
 let dragDepth = 0;
@@ -2924,9 +2956,14 @@ window.addEventListener('drop', async (e) => {
 
 $('#home-btn').addEventListener('click', () => activate('home'));
 
-// Theme the page, and tell the Electron shell so native chrome matches
+// Theme the page, and tell the Electron shell so native chrome matches and
+// the tool frames (which can't see this page's storage) follow along
 applyTheme();
-onThemeChange(() => void desktop?.setTheme(getThemePref()));
+onThemeChange(() => {
+  const pref = getThemePref();
+  void desktop?.setTheme(pref);
+  frameTools.forEach((ft) => postToFrame(ft, { type: 'acro:theme', pref }));
+});
 void desktop?.setTheme(getThemePref());
 
 // Desktop app (Electron): native title bar buttons are drawn by the OS over
@@ -2944,13 +2981,17 @@ if (desktop) {
     if (command === 'about') return showAbout();
     if (command === 'shortcuts') return showShortcuts();
     if (command === 'undo' || command === 'redo') {
-      // Text fields (also inside tool frames) get normal text undo
-      const outer = document.activeElement;
-      const doc =
-        outer instanceof HTMLIFrameElement ? outer.contentDocument : document;
-      const focused = (doc?.activeElement ?? null) as HTMLElement | null;
-      if (doc && isEditable(focused)) {
-        doc.execCommand(command);
+      // Inside a tool, undo belongs to the tool (as with forwarded keys):
+      // it undoes typing in the focused field
+      const focused = document.activeElement as HTMLElement | null;
+      const ft = [...frameTools].find((t) => t.frame === focused);
+      if (ft) {
+        postToFrame(ft, { type: 'acro:edit', command });
+        return;
+      }
+      // Text fields get normal text undo
+      if (isEditable(focused)) {
+        document.execCommand(command);
         return;
       }
     }
