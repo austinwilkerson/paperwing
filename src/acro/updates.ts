@@ -15,7 +15,8 @@ type Toast = (
 const LAST_CHECK_KEY = 'paperwing:lastUpdateCheck';
 const DAY = 24 * 60 * 60 * 1000;
 
-function newer(latest: string, current: string): boolean {
+/** True if release tag `latest` is a higher version than `current` */
+export function isNewer(latest: string, current: string): boolean {
   const parse = (v: string) =>
     v
       .replace(/^v/, '')
@@ -48,7 +49,7 @@ export async function checkForUpdates(
     } catch {
       /* storage unavailable */
     }
-    if (newer(release.tag_name, __PAPERWING_VERSION__)) {
+    if (isNewer(release.tag_name, __PAPERWING_VERSION__)) {
       toast(`Paperwing ${release.tag_name.replace(/^v/, '')} is available`, {
         label: 'Download',
         onClick: () => window.open(release.html_url, '_blank', 'noopener'),

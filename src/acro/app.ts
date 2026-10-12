@@ -20,6 +20,8 @@ import {
 import { Viewer, type PageInfo } from './viewer';
 import { desktop, isMac, key, toFile } from './desktop';
 import { checkForUpdates, scheduleUpdateCheck } from './updates';
+import { findShortcut, formatCombo, SHORTCUTS, type KeyInput } from './keymap';
+import { getPrefs, noteToolUsed, setPrefs, togglePinned } from './prefs';
 import {
   applyTheme,
   getThemePref,
@@ -259,7 +261,12 @@ interface DocTab {
   fullTool?: FrameTool;
   page: PageInfo;
   activeAnnot: string | null;
+  /** Incremented on every edit; compared with savedVersion for "unsaved" */
+  version: number;
+  savedVersion: number;
 }
+
+const isDirty = (t: Tab) => t.kind === 'doc' && t.version !== t.savedVersion;
 
 interface ToolTab {
   kind: 'tool';
@@ -299,14 +306,36 @@ function renderTabs() {
       const el = h(
         'div',
         {
-          class: `tab${t.id === activeId ? ' is-active' : ''}`,
+          class: `tab${t.id === activeId ? ' is-active' : ''}${isDirty(t) ? ' is-dirty' : ''}`,
           role: 'tab',
           'aria-selected': String(t.id === activeId),
-          title: t.name,
+          title: isDirty(t) ? `${t.name} (unsaved changes)` : t.name,
+          draggable: 'true',
+          onDragstart: (e: DragEvent) => {
+            e.dataTransfer!.setData('application/x-paperwing-tab', t.id);
+            e.dataTransfer!.effectAllowed = 'move';
+          },
+          onDragover: (e: DragEvent) => {
+            if (e.dataTransfer?.types.includes('application/x-paperwing-tab')) {
+              e.preventDefault();
+            }
+          },
+          onDrop: (e: DragEvent) => {
+            const from = e.dataTransfer?.getData('application/x-paperwing-tab');
+            if (!from || from === t.id) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const fromIdx = tabs.findIndex((x) => x.id === from);
+            const toIdx = tabs.findIndex((x) => x.id === t.id);
+            const [item] = tabs.splice(fromIdx, 1);
+            tabs.splice(toIdx, 0, item);
+            renderTabs();
+            persistSession();
+          },
           onMousedown: (e: MouseEvent) => {
             if (e.button === 1) {
               e.preventDefault();
-              closeTab(t.id);
+              void requestCloseTab(t.id);
             }
           },
           onClick: () => activate(t.id),
@@ -339,7 +368,7 @@ function renderTabs() {
           'Close tab',
           (e) => {
             e.stopPropagation();
-            closeTab(t.id);
+            void requestCloseTab(t.id);
           },
           'tab-close'
         )
@@ -387,11 +416,32 @@ function activate(id: string) {
   document.title = tab ? `${tab.name} - Paperwing` : 'Paperwing';
 }
 
+/** Recently closed documents (recent-file ids), for Ctrl+Shift+T */
+const closedDocs: string[] = [];
+
+/** Close a tab, asking first if it has unsaved changes */
+async function requestCloseTab(id: string): Promise<boolean> {
+  const tab = tabs.find((t) => t.id === id);
+  if (!tab) return true;
+  if (tab.kind === 'doc' && isDirty(tab)) {
+    activate(id);
+    const choice = await confirmUnsaved([tab]);
+    if (choice === 'cancel') return false;
+    if (choice === 'save' && !(await saveDoc(tab))) return false;
+  }
+  closeTab(id);
+  return true;
+}
+
 function closeTab(id: string) {
   const i = tabs.findIndex((t) => t.id === id);
   if (i < 0) return;
   const tab = tabs[i];
   tabs.splice(i, 1);
+  if (tab.kind === 'doc' && tab.recentId) {
+    closedDocs.push(tab.recentId);
+    if (closedDocs.length > 20) closedDocs.shift();
+  }
   document
     .querySelectorAll(`[data-owner="${CSS.escape(id)}"]`)
     .forEach((el) => el.remove());
@@ -403,6 +453,14 @@ function closeTab(id: string) {
   } else {
     renderTabs();
   }
+  persistSession();
+}
+
+async function reopenClosedTab() {
+  const recentId = closedDocs.pop();
+  if (!recentId) return toast('No recently closed documents');
+  const entry = (await listRecent()).find((r) => r.id === recentId);
+  if (entry) await openRecent(entry);
 }
 
 async function toggleStar(tab: DocTab) {
@@ -480,6 +538,8 @@ async function openDocument(
     panelEl,
     page: { current: 1, total: 0 },
     activeAnnot: null,
+    version: 0,
+    savedVersion: 0,
   };
   tabs.push(tab);
   activate(id);
@@ -497,6 +557,7 @@ async function openDocument(
   if (activeId === id) renderDocChrome(tab);
 
   tab.recentId = (await rememberFile(file, source)) ?? recentId;
+  persistSession();
   const entry = (await listRecent()).find((r) => r.id === tab.recentId);
   if (entry?.starred) {
     tab.starred = true;
@@ -596,6 +657,7 @@ function saveBlob(blob: Blob, name: string) {
 
 function openToolTab(tool: AppTool, files: File[] = []) {
   if (!tool.href) return;
+  noteToolUsed(tool.id);
   const id = `tool-${++tabSeq}`;
   const ft = createFrameTool(tool, files, id);
   const view = $('#view-tool');
@@ -623,6 +685,7 @@ function openToolTab(tool: AppTool, files: File[] = []) {
 
 /** Run a tool against the open document (side panel or full area) */
 async function openToolOnDoc(tab: DocTab, tool: AppTool) {
+  noteToolUsed(tool.id);
   if (tool.action) return runViewerAction(tab, tool);
   if (!tool.href) return;
   if (tab.loading) return toast('The document is still loading…');
@@ -746,9 +809,39 @@ function renderLeftPanel(tab: DocTab) {
   );
   const body = h('div', { class: 'lp-body' });
   const lists = panelGroups(tab.panel);
+  if (tab.panel === 'all') {
+    const prefs = getPrefs();
+    const pick = (ids: string[]) =>
+      ids.map((id) => getTool(id)).filter((t): t is AppTool => !!t);
+    const pinned = pick(prefs.pinnedTools);
+    const recentUsed = pick(prefs.recentTools).filter(
+      (t) => !prefs.pinnedTools.includes(t.id)
+    );
+    if (recentUsed.length)
+      lists.unshift({ name: 'Recently used', tools: recentUsed.slice(0, 3) });
+    if (pinned.length) lists.unshift({ name: 'Pinned', tools: pinned });
+  }
   for (const g of lists) {
     if (lists.length > 1) body.append(h('div', { class: 'lp-group' }, g.name));
     for (const tool of g.tools) {
+      const isPinned = getPrefs().pinnedTools.includes(tool.id);
+      const pin = h(
+        'span',
+        {
+          class: `lp-pin${isPinned ? ' is-on' : ''}`,
+          role: 'button',
+          tabindex: '-1',
+          title: isPinned ? 'Unpin' : 'Pin to top',
+          'aria-label': isPinned ? 'Unpin' : 'Pin to top',
+          onClick: (e: MouseEvent) => {
+            e.stopPropagation();
+            const on = togglePinned(tool.id);
+            toast(on ? `Pinned ${tool.name}` : `Unpinned ${tool.name}`);
+            renderLeftPanel(tab);
+          },
+        },
+        icon('pin', 14)
+      );
       body.append(
         h(
           'button',
@@ -768,7 +861,8 @@ function renderLeftPanel(tab: DocTab) {
             },
           },
           toolIcon(tool.icon, tool.color, 20),
-          h('span', {}, tool.name)
+          h('span', {}, tool.name),
+          pin
         )
       );
     }
@@ -961,6 +1055,12 @@ function renderQuickbar(tab: DocTab) {
   );
   bar.replaceChildren(grip, ...buttons, more);
   makeDraggable(bar, grip);
+  const pos = getPrefs().quickbarPos;
+  if (pos) {
+    const stage = $('#doc-stage');
+    bar.style.left = `${Math.max(4, Math.min(pos.x, stage.clientWidth - 48))}px`;
+    bar.style.top = `${Math.max(4, Math.min(pos.y, stage.clientHeight - 60))}px`;
+  }
 }
 
 function makeDraggable(el: HTMLElement, handle: HTMLElement) {
@@ -985,7 +1085,14 @@ function makeDraggable(el: HTMLElement, handle: HTMLElement) {
     handle.onpointerup = () => {
       handle.onpointermove = null;
       handle.onpointerup = null;
+      setPrefs({ quickbarPos: { x: el.offsetLeft, y: el.offsetTop } });
     };
+  };
+  // Double-click the grip to put the toolbar back
+  handle.ondblclick = () => {
+    el.style.left = '';
+    el.style.top = '';
+    setPrefs({ quickbarPos: null });
   };
 }
 
@@ -1093,28 +1200,39 @@ async function docBlob(tab: DocTab): Promise<Blob | null> {
   return bytes ? new Blob([bytes], { type: 'application/pdf' }) : null;
 }
 
-async function saveDoc(tab: DocTab, saveAs = false) {
+/** Save a document; resolves true if it was written somewhere */
+async function saveDoc(tab: DocTab, saveAs = false): Promise<boolean> {
+  const version = tab.version;
   const blob = await docBlob(tab);
-  if (!blob) return;
+  if (!blob) return false;
+  const done = (name: string) => {
+    tab.savedVersion = version;
+    tab.name = name;
+    renderTabs();
+    persistSession();
+    toast(`Saved ${name}`);
+    return true;
+  };
 
   if (desktop && !tab.handle) {
     const bytes = new Uint8Array(await blob.arrayBuffer());
     try {
       if (!saveAs && tab.path && (await desktop.writeFile(tab.path, bytes))) {
-        toast(`Saved ${tab.name}`);
-        return;
+        return done(tab.name);
       }
       const saved = await desktop.saveAs(tab.name, bytes);
-      if (!saved) return;
+      if (!saved) return false;
       tab.path = saved.path;
-      tab.name = saved.name;
-      renderTabs();
-      toast(`Saved ${saved.name}`);
+      tab.recentId =
+        (await rememberFile(new File([blob], saved.name), {
+          path: saved.path,
+        })) ?? tab.recentId;
+      return done(saved.name);
     } catch (e) {
       console.error(e);
       toast(`Couldn't save ${tab.name}`);
+      return false;
     }
-    return;
   }
 
   let handle = saveAs ? undefined : tab.handle;
@@ -1137,16 +1255,17 @@ async function saveDoc(tab: DocTab, saveAs = false) {
       await w.write(blob);
       await w.close();
       tab.handle = handle;
-      tab.name = handle.name;
-      renderTabs();
-      toast(`Saved ${handle.name}`);
-      return;
+      return done(handle.name);
     }
   } catch (e) {
-    if ((e as DOMException)?.name === 'AbortError') return;
+    if ((e as DOMException)?.name === 'AbortError') return false;
     console.error(e);
   }
+  // No file system access (plain browser): download a copy instead
   saveBlob(blob, tab.name);
+  tab.savedVersion = version;
+  renderTabs();
+  return true;
 }
 
 $('#save-btn').addEventListener('click', () => {
@@ -1179,66 +1298,8 @@ function searchTools(q: string): AppTool[] {
   return out;
 }
 
-function openFind(anchor: HTMLElement) {
-  const tab = activeDoc();
-  const input = h('input', {
-    type: 'search',
-    class: 'find-input',
-    placeholder: 'Find text or tools',
-  });
-  const results = h('div', { class: 'find-results' });
-  const render = () => {
-    const q = input.value.trim();
-    const items: HTMLElement[] = [];
-    if (tab && q) {
-      items.push(
-        h(
-          'button',
-          {
-            type: 'button',
-            class: 'menu-item',
-            onClick: () => {
-              closePopover?.();
-              viewer.command(tab.id, 'panel:toggle-search');
-            },
-          },
-          h('span', { class: 'mi-icon' }, icon('search', 16)),
-          h('span', { class: 'mi-label' }, `Find “${q}” in document`)
-        )
-      );
-    }
-    items.push(h('div', { class: 'find-head' }, 'Tools'));
-    for (const t of searchTools(q).slice(0, 8)) {
-      items.push(
-        h(
-          'button',
-          {
-            type: 'button',
-            class: 'menu-item',
-            onClick: () => {
-              closePopover?.();
-              runTool(t);
-            },
-          },
-          h('span', { class: 'mi-icon' }, toolIcon(t.icon, t.color, 18)),
-          h('span', { class: 'mi-label' }, t.name)
-        )
-      );
-    }
-    results.replaceChildren(...items);
-  };
-  input.addEventListener('input', render);
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter')
-      results.querySelector<HTMLButtonElement>('.menu-item')?.click();
-  });
-  render();
-  showPopover(anchor, h('div', { class: 'find-pop' }, input, results));
-  input.focus();
-}
-
 $('#find-btn').addEventListener('click', (e) =>
-  openFind(e.currentTarget as HTMLElement)
+  openPalette(e.currentTarget as HTMLElement)
 );
 
 /** Open a tool on the current document if there is one, else in its own tab */
@@ -1543,37 +1604,42 @@ $('#create-btn').addEventListener('click', (e) =>
   showMenu(e.currentTarget as HTMLElement, createMenuItems())
 );
 
-function closeAllTabs() {
-  [...tabs].forEach((t) => closeTab(t.id));
-}
-
 $('#menu-btn').addEventListener('click', (e) => {
   const doc = activeDoc();
+  const sc = (id: string) =>
+    formatCombo(SHORTCUTS.find((x) => x.id === id)!.keys[0], isMac);
   showMenu(e.currentTarget as HTMLElement, [
     {
       label: 'Open…',
-      shortcut: key('Ctrl+O'),
+      shortcut: sc('open'),
       icon: icon('folder', 16),
       onClick: openFromDialog,
     },
     {
       label: 'Create PDF',
+      shortcut: sc('create'),
       icon: icon('plus', 16),
       onClick: () => showMenu($('#create-btn'), createMenuItems()),
+    },
+    {
+      label: 'Reopen closed document',
+      shortcut: sc('reopen'),
+      disabled: !closedDocs.length,
+      onClick: () => void reopenClosedTab(),
     },
     { divider: true },
     {
       label: 'Save',
-      shortcut: key('Ctrl+S'),
+      shortcut: sc('save'),
       icon: icon('save', 16),
       disabled: !doc,
-      onClick: () => doc && saveDoc(doc),
+      onClick: () => doc && void saveDoc(doc),
     },
     {
       label: 'Save as…',
-      shortcut: key('Shift+Ctrl+S'),
+      shortcut: sc('saveAs'),
       disabled: !doc,
-      onClick: () => doc && saveDoc(doc, true),
+      onClick: () => doc && void saveDoc(doc, true),
     },
     {
       label: 'Download a copy',
@@ -1583,20 +1649,49 @@ $('#menu-btn').addEventListener('click', (e) => {
     },
     {
       label: 'Print…',
-      shortcut: key('Ctrl+P'),
+      shortcut: sc('print'),
       icon: icon('print', 16),
       disabled: !doc,
       onClick: () => doc && viewer.command(doc.id, 'document:print'),
     },
+    {
+      label: 'Document properties',
+      shortcut: sc('properties'),
+      disabled: !doc,
+      onClick: () => doc && showProperties(doc),
+    },
+    { divider: true },
+    {
+      label: 'Read mode',
+      shortcut: sc('readMode'),
+      disabled: !doc,
+      onClick: () => setReadMode(true),
+    },
+    {
+      label: 'Full screen',
+      shortcut: sc('fullScreen'),
+      disabled: !doc,
+      onClick: () => void toggleFullScreen(),
+    },
     { divider: true },
     {
       label: 'Close tab',
-      shortcut: key('Ctrl+W'),
+      shortcut: sc('close'),
       disabled: activeId === 'home',
-      onClick: () => closeTab(activeId),
+      onClick: () => void requestCloseTab(activeId),
     },
-    { label: 'Close all tabs', disabled: !tabs.length, onClick: closeAllTabs },
+    {
+      label: 'Close all tabs',
+      disabled: !tabs.length,
+      onClick: () => void closeAllTabs(),
+    },
     { divider: true },
+    {
+      label: 'Preferences…',
+      shortcut: sc('prefs'),
+      icon: icon('settings', 16),
+      onClick: showPreferences,
+    },
     {
       label: 'Appearance',
       icon: icon('theme', 16),
@@ -1610,6 +1705,11 @@ $('#menu-btn').addEventListener('click', (e) => {
 $('#help-btn').addEventListener('click', (e) =>
   showMenu(e.currentTarget as HTMLElement, [
     { label: 'Keyboard shortcuts', onClick: showShortcuts },
+    {
+      label: 'Search tools & commands',
+      shortcut: formatCombo('Shift+Ctrl+P', isMac),
+      onClick: () => openPalette(),
+    },
     {
       label: 'Paperwing on GitHub',
       onClick: () => window.open(REPO_URL, '_blank', 'noopener'),
@@ -1704,69 +1804,783 @@ function showAbout() {
 }
 
 function showShortcuts() {
-  const rows: [string, string][] = [
-    ['Open a file', key('Ctrl+O')],
-    ['Save', key('Ctrl+S')],
-    ['Save as', key('Shift+Ctrl+S')],
-    ['Print', key('Ctrl+P')],
-    ['Find text', key('Ctrl+F')],
-    ['Find tools', key('Ctrl+K')],
-    ['Close tab', key('Ctrl+W')],
-    ['Next / previous tab', `${key('Ctrl+Tab')} / ${key('Shift+Ctrl+Tab')}`],
-    ['Home', key('Shift+Ctrl+H')],
-  ];
-  dialog(
-    'Keyboard shortcuts',
-    h(
-      'div',
-      { class: 'dlg-body' },
+  const groups = new Map<string, typeof SHORTCUTS>();
+  for (const sc of SHORTCUTS) {
+    if (!groups.has(sc.group)) groups.set(sc.group, []);
+    groups.get(sc.group)!.push(sc);
+  }
+  const body = h('div', { class: 'dlg-body shortcuts' });
+  for (const [group, list] of groups) {
+    body.append(
+      h('div', { class: 'pref-group' }, group),
       h(
         'table',
         { class: 'kbd-table' },
-        ...rows.map(([a, b]) =>
-          h('tr', {}, h('td', {}, a), h('td', {}, h('kbd', {}, b)))
+        ...list.map((sc) =>
+          h(
+            'tr',
+            {},
+            h('td', {}, sc.label),
+            h(
+              'td',
+              {},
+              ...sc.keys.flatMap((k, i) => [
+                i ? ' ' : '',
+                h('kbd', {}, formatCombo(k, isMac)),
+              ])
+            )
+          )
         )
       )
-    )
-  );
+    );
+  }
+  if (!getPrefs().singleKey) {
+    body.append(
+      h(
+        'p',
+        { class: 'muted' },
+        'Single-key tool accelerators are turned off in Preferences.'
+      )
+    );
+  }
+  dialog('Keyboard shortcuts', body);
 }
 
 /* ------------------------------------------------------------------ */
 /* Keyboard, drag & drop, startup                                      */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/* Dialogs, preferences, session, view modes                           */
+/* ------------------------------------------------------------------ */
+
+interface DialogButton<T> {
+  label: string;
+  value: T;
+  kind?: 'primary' | 'secondary' | 'quiet';
+}
+
+/** Modal with buttons; resolves with the clicked button's value */
+function askDialog<T>(
+  title: string,
+  message: string,
+  buttons: DialogButton<T>[],
+  cancelValue: T
+): Promise<T> {
+  return new Promise((resolve) => {
+    const backdrop = h('div', { class: 'dlg-backdrop' });
+    const finish = (v: T) => {
+      backdrop.remove();
+      document.removeEventListener('keydown', onKey, true);
+      resolve(v);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        finish(cancelValue);
+      }
+    };
+    document.addEventListener('keydown', onKey, true);
+    const actions = h(
+      'div',
+      { class: 'dlg-actions' },
+      ...buttons.map((b) =>
+        h(
+          'button',
+          {
+            type: 'button',
+            class:
+              b.kind === 'primary'
+                ? 'accent-btn'
+                : b.kind === 'quiet'
+                  ? 'quiet-btn'
+                  : 'pill-btn',
+            onClick: () => finish(b.value),
+          },
+          b.label
+        )
+      )
+    );
+    backdrop.append(
+      h(
+        'div',
+        { class: 'dlg', role: 'alertdialog', 'aria-label': title },
+        h('div', { class: 'dlg-head' }, h('h2', {}, title)),
+        h('div', { class: 'dlg-body' }, h('p', {}, message), actions)
+      )
+    );
+    document.body.append(backdrop);
+    actions.querySelector<HTMLButtonElement>('.accent-btn')?.focus();
+  });
+}
+
+type UnsavedChoice = 'save' | 'discard' | 'cancel';
+
+function confirmUnsaved(docs: DocTab[]): Promise<UnsavedChoice> {
+  const many = docs.length > 1;
+  return askDialog<UnsavedChoice>(
+    many ? 'Save changes?' : `Save changes to “${docs[0].name}”?`,
+    many
+      ? `${docs.length} documents have unsaved changes. Your changes will be lost if you don't save them.`
+      : "Your changes will be lost if you don't save them.",
+    [
+      { label: "Don't save", value: 'discard', kind: 'quiet' },
+      { label: 'Cancel', value: 'cancel', kind: 'secondary' },
+      { label: many ? 'Save all' : 'Save', value: 'save', kind: 'primary' },
+    ],
+    'cancel'
+  );
+}
+
+async function closeAllTabs(): Promise<boolean> {
+  const dirty = tabs.filter(isDirty) as DocTab[];
+  if (dirty.length) {
+    const choice = await confirmUnsaved(dirty);
+    if (choice === 'cancel') return false;
+    if (choice === 'save') {
+      for (const d of dirty) {
+        activate(d.id);
+        if (!(await saveDoc(d))) return false;
+      }
+    }
+  }
+  [...tabs].forEach((t) => closeTab(t.id));
+  return true;
+}
+
+viewer.onChange((tabId) => {
+  const tab = tabs.find((t) => t.id === tabId);
+  if (tab?.kind !== 'doc') return;
+  const wasDirty = isDirty(tab);
+  tab.version++;
+  if (!wasDirty) renderTabs();
+});
+
+// Closing the app window with unsaved work
+window.addEventListener('beforeunload', (e) => {
+  if (!desktop && tabs.some(isDirty)) e.preventDefault();
+});
+desktop?.onCloseRequested?.(async () => {
+  if (await closeAllTabs()) {
+    persistSession();
+    void desktop!.confirmClose();
+  }
+});
+
+/* Session restore ------------------------------------------------------ */
+
+const SESSION_KEY = 'paperwing:session';
+let restoring = false;
+
+function persistSession() {
+  if (restoring) return;
+  const docs = tabs
+    .filter((t): t is DocTab => t.kind === 'doc' && !!t.recentId)
+    .map((t) => t.recentId!);
+  const active = activeDoc()?.recentId ?? null;
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ docs, active }));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+async function restoreSession() {
+  if (!getPrefs().restoreSession) return;
+  let saved: { docs: string[]; active: string | null } | null = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+  } catch {
+    saved = null;
+  }
+  if (!saved?.docs?.length) return;
+  restoring = true;
+  const recent = await listRecent();
+  for (const id of saved.docs) {
+    const entry = recent.find((r) => r.id === id);
+    // Files remembered only by browser handle need a click to re-grant access
+    if (!entry || (!entry.path && !entry.data)) continue;
+    const got = await reopenRecent(entry).catch((): null => null);
+    if (got)
+      await openDocument(
+        got.file,
+        { handle: got.handle, path: got.path },
+        entry.id
+      );
+  }
+  restoring = false;
+  const active = tabs.find(
+    (t) => t.kind === 'doc' && t.recentId === saved!.active
+  );
+  if (active) activate(active.id);
+  persistSession();
+}
+
+/* Read mode & full screen -------------------------------------------- */
+
+function setReadMode(on: boolean) {
+  document.body.classList.toggle('is-reading', on);
+  if (on) toast(`Read mode — press Esc or ${key('Ctrl+H')} to exit`);
+  if (!on && document.fullscreenElement) void document.exitFullscreen();
+}
+
+async function toggleFullScreen() {
+  if (document.fullscreenElement) {
+    await document.exitFullscreen();
+    setReadMode(false);
+  } else {
+    setReadMode(true);
+    await document.documentElement.requestFullscreen().catch(() => {});
+  }
+}
+document.addEventListener('fullscreenchange', () => {
+  if (
+    !document.fullscreenElement &&
+    document.body.classList.contains('is-reading')
+  ) {
+    setReadMode(false);
+  }
+});
+
+/* Zoom to (Ctrl+Y) --------------------------------------------------- */
+
+function showZoomMenu(
+  doc: DocTab,
+  anchor: HTMLElement = $('#right-rail .rr-bottom') ?? $('#find-btn')
+) {
+  const level = (label: string, command: string): MenuItem => ({
+    label,
+    onClick: () => viewer.command(doc.id, command),
+  });
+  showMenu(
+    anchor,
+    [
+      level('Fit page', 'zoom:fit-page'),
+      level('Fit width', 'zoom:fit-width'),
+      { divider: true },
+      level('25%', 'zoom:25'),
+      level('50%', 'zoom:50'),
+      level('100% (actual size)', 'zoom:100'),
+      level('125%', 'zoom:125'),
+      level('150%', 'zoom:150'),
+      level('200%', 'zoom:200'),
+      level('400%', 'zoom:400'),
+    ],
+    'right'
+  );
+}
+
+/* Document properties (Ctrl+D) ----------------------------------------- */
+
+function showProperties(doc: DocTab) {
+  const info = viewer.docInfo(doc.id);
+  const inches = (pt: number) => (pt / 72).toFixed(2);
+  const mm = (pt: number) => Math.round((pt / 72) * 25.4);
+  const rows: [string, string][] = [
+    ['File name', doc.name],
+    [
+      'Location',
+      doc.path ?? (doc.handle ? 'On this computer' : 'Not saved yet'),
+    ],
+    ['Pages', info ? String(info.pages) : '—'],
+    [
+      'Page size',
+      info && info.width
+        ? `${inches(info.width)} × ${inches(info.height)} in (${mm(info.width)} × ${mm(info.height)} mm)`
+        : '—',
+    ],
+    ['Unsaved changes', isDirty(doc) ? 'Yes' : 'No'],
+  ];
+  const editMeta = getTool('edit-metadata');
+  dialog(
+    'Document properties',
+    h(
+      'div',
+      { class: 'dlg-body' },
+      h(
+        'table',
+        { class: 'props-table' },
+        ...rows.map(([k, v]) => h('tr', {}, h('th', {}, k), h('td', {}, v)))
+      ),
+      editMeta &&
+        h(
+          'div',
+          { class: 'dlg-actions' },
+          h(
+            'button',
+            {
+              type: 'button',
+              class: 'pill-btn',
+              onClick: () => {
+                document.querySelector('.dlg-backdrop')?.remove();
+                void openToolOnDoc(doc, editMeta);
+              },
+            },
+            'Edit metadata…'
+          )
+        )
+    )
+  );
+}
+
+/* Preferences (Ctrl+K) --------------------------------------------------- */
+
+function showPreferences() {
+  const prefs = getPrefs();
+  const toggle = (
+    label: string,
+    hint: string,
+    checked: boolean,
+    onChange: (v: boolean) => void
+  ) => {
+    const input = h('input', { type: 'checkbox', checked });
+    input.addEventListener('change', () => onChange(input.checked));
+    return h(
+      'label',
+      { class: 'pref-row' },
+      input,
+      h('span', {}, h('b', {}, label), h('small', {}, hint))
+    );
+  };
+  const themeSelect = h(
+    'select',
+    { class: 'pref-select', 'aria-label': 'Appearance' },
+    h('option', { value: 'system' }, 'Use system setting'),
+    h('option', { value: 'light' }, 'Light'),
+    h('option', { value: 'dark' }, 'Dark')
+  );
+  themeSelect.value = getThemePref();
+  themeSelect.addEventListener('change', () =>
+    setThemePref(themeSelect.value as ThemePref)
+  );
+  dialog(
+    'Preferences',
+    h(
+      'div',
+      { class: 'dlg-body prefs' },
+      h('div', { class: 'pref-group' }, 'Appearance'),
+      h(
+        'label',
+        { class: 'pref-row' },
+        h('span', {}, h('b', {}, 'Theme')),
+        themeSelect
+      ),
+      h('div', { class: 'pref-group' }, 'Keyboard'),
+      toggle(
+        'Single-key accelerators',
+        'Press H, V, S, U, D, X… to pick tools, like Acrobat.',
+        prefs.singleKey,
+        (v) => setPrefs({ singleKey: v })
+      ),
+      h('div', { class: 'pref-group' }, 'Startup'),
+      toggle(
+        'Reopen documents from last session',
+        'Restores your open tabs when Paperwing starts.',
+        prefs.restoreSession,
+        (v) => setPrefs({ restoreSession: v })
+      ),
+      toggle(
+        'Check for updates',
+        'Looks for new versions on GitHub once a day. Nothing else is sent.',
+        prefs.checkUpdates,
+        (v) => setPrefs({ checkUpdates: v })
+      )
+    )
+  );
+}
+
+/* Command palette (Shift+Ctrl+P) ----------------------------------------- */
+
+interface PaletteItem {
+  label: string;
+  hint?: string;
+  icon: Node;
+  run: () => void;
+}
+
+function paletteCommands(): PaletteItem[] {
+  const doc = activeDoc();
+  const items: PaletteItem[] = [];
+  for (const s of SHORTCUTS) {
+    if (s.singleKey) continue;
+    if (
+      !doc &&
+      ![
+        'open',
+        'create',
+        'prefs',
+        'reopen',
+        'closeAll',
+        'nextTab',
+        'prevTab',
+      ].includes(s.id)
+    ) {
+      continue;
+    }
+    items.push({
+      label: s.label,
+      hint: formatCombo(s.keys[0], isMac),
+      icon: icon('chevronRight', 16),
+      run: () => runShortcut(s.id),
+    });
+  }
+  items.push(
+    {
+      label: 'Appearance: Light',
+      icon: icon('theme', 16),
+      run: () => setThemePref('light'),
+    },
+    {
+      label: 'Appearance: Dark',
+      icon: icon('theme', 16),
+      run: () => setThemePref('dark'),
+    },
+    {
+      label: 'Appearance: Use system setting',
+      icon: icon('theme', 16),
+      run: () => setThemePref('system'),
+    },
+    { label: 'Keyboard shortcuts', icon: icon('help', 16), run: showShortcuts },
+    {
+      label: 'Check for updates',
+      icon: icon('download', 16),
+      run: () => void checkForUpdates(toast, true),
+    }
+  );
+  return items;
+}
+
+function openPalette(anchor?: HTMLElement) {
+  const doc = activeDoc();
+  const input = h('input', {
+    type: 'search',
+    class: 'find-input',
+    placeholder: doc
+      ? 'Find text, tools or commands'
+      : 'Find tools or commands',
+  });
+  const results = h('div', { class: 'find-results' });
+  const row = (label: string, iconNode: Node, run: () => void, hint?: string) =>
+    h(
+      'button',
+      {
+        type: 'button',
+        class: 'menu-item',
+        onClick: () => {
+          closePopover?.();
+          run();
+        },
+      },
+      h('span', { class: 'mi-icon' }, iconNode),
+      h('span', { class: 'mi-label' }, label),
+      hint && h('span', { class: 'mi-key' }, hint)
+    );
+  const render = () => {
+    const q = input.value.trim().toLowerCase();
+    const out: HTMLElement[] = [];
+    if (doc && q) {
+      out.push(
+        row(
+          `Find “${input.value.trim()}” in document`,
+          icon('search', 16),
+          () => viewer.command(doc.id, 'panel:toggle-search')
+        )
+      );
+    }
+    const tools = searchTools(q).slice(0, q ? 8 : 5);
+    if (tools.length) {
+      out.push(h('div', { class: 'find-head' }, 'Tools'));
+      tools.forEach((t) =>
+        out.push(row(t.name, toolIcon(t.icon, t.color, 18), () => runTool(t)))
+      );
+    }
+    const cmds = paletteCommands().filter(
+      (c) => !q || c.label.toLowerCase().includes(q)
+    );
+    if (cmds.length) {
+      out.push(h('div', { class: 'find-head' }, 'Commands'));
+      cmds
+        .slice(0, q ? 8 : 6)
+        .forEach((c) => out.push(row(c.label, c.icon, c.run, c.hint)));
+    }
+    if (!out.length) out.push(h('div', { class: 'find-empty' }, 'No matches'));
+    results.replaceChildren(...out);
+  };
+  input.addEventListener('input', render);
+  input.addEventListener('keydown', (e) => {
+    const items = [
+      ...results.querySelectorAll<HTMLButtonElement>('.menu-item'),
+    ];
+    const i = items.indexOf(document.activeElement as HTMLButtonElement);
+    if (e.key === 'Enter') items[0]?.click();
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      items[0]?.focus();
+    }
+    void i;
+  });
+  results.addEventListener('keydown', (e) => {
+    const items = [
+      ...results.querySelectorAll<HTMLButtonElement>('.menu-item'),
+    ];
+    const i = items.indexOf(document.activeElement as HTMLButtonElement);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      items[Math.min(i + 1, items.length - 1)]?.focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (i <= 0) input.focus();
+      else items[i - 1].focus();
+    }
+  });
+  render();
+  const target = anchor ?? (doc ? $('#find-btn') : $('#tabs'));
+  showPopover(target, h('div', { class: 'find-pop' }, input, results));
+  input.focus();
+}
+
+/* ------------------------------------------------------------------ */
+/* Keyboard shortcuts (Acrobat-compatible, see keymap.ts)              */
+/* ------------------------------------------------------------------ */
+
+const SHAPES = [
+  'annotation:add-rectangle',
+  'annotation:add-circle',
+  'annotation:add-line',
+  'annotation:add-arrow',
+  'annotation:add-polygon',
+];
+const MARKUPS = [
+  'annotation:add-underline',
+  'annotation:add-strikeout',
+  'annotation:add-squiggly',
+];
+let shapeIdx = -1;
+let markupIdx = -1;
+
+function goPage(doc: DocTab, which: 'first' | 'last') {
+  const info = viewer.pageInfo(doc.id);
+  if (info) viewer.goToPage(doc.id, which === 'first' ? 1 : info.total);
+}
+
+function switchTab(dir: 1 | -1) {
+  const ids = ['home', ...tabs.map((t) => t.id)];
+  const i = ids.indexOf(activeId);
+  activate(ids[(i + dir + ids.length) % ids.length]);
+}
+
+/** Returns false if the action doesn't apply right now (key passes through) */
+function runShortcut(id: string): boolean {
+  const doc = activeDoc();
+  const needDoc = (fn: (d: DocTab) => void) => {
+    if (!doc) return false;
+    fn(doc);
+    return true;
+  };
+  const cmd = (command: string) =>
+    needDoc((d) => viewer.command(d.id, command));
+  const annot = (button: string, command: string) =>
+    needDoc((d) => runAnnotCommand(d, button, command));
+  const tool = (toolId: string, name?: string) =>
+    needDoc((d) => {
+      const t = getTool(toolId);
+      if (t) void openToolOnDoc(d, name ? { ...t, name } : t);
+    });
+
+  switch (id) {
+    case 'open':
+      void openFromDialog();
+      return true;
+    case 'create':
+      showMenu($('#create-btn'), createMenuItems());
+      return true;
+    case 'save':
+      return needDoc((d) => void saveDoc(d));
+    case 'saveAs':
+      return needDoc((d) => void saveDoc(d, true));
+    case 'print':
+      return cmd('document:print');
+    case 'close':
+      if (activeId === 'home') return false;
+      void requestCloseTab(activeId);
+      return true;
+    case 'closeAll':
+      void closeAllTabs();
+      return true;
+    case 'reopen':
+      void reopenClosedTab();
+      return true;
+    case 'properties':
+      return needDoc(showProperties);
+    case 'prefs':
+      showPreferences();
+      return true;
+    case 'quit':
+      window.close();
+      return true;
+    case 'undo':
+      return needDoc((d) => viewer.history(d.id, 'undo'));
+    case 'redo':
+      return needDoc((d) => viewer.history(d.id, 'redo'));
+    case 'find':
+    case 'findAdvanced':
+      return cmd('panel:toggle-search');
+    case 'findNext':
+      return needDoc((d) => viewer.searchStep(d.id, 1));
+    case 'findPrev':
+      return needDoc((d) => viewer.searchStep(d.id, -1));
+    case 'palette':
+      openPalette();
+      return true;
+    case 'nextPage':
+      return cmd('scroll:next-page');
+    case 'prevPage':
+      return cmd('scroll:previous-page');
+    case 'firstPage':
+      return needDoc((d) => goPage(d, 'first'));
+    case 'lastPage':
+      return needDoc((d) => goPage(d, 'last'));
+    case 'goToPage':
+      return needDoc(() => {
+        const input = $<HTMLInputElement>('#right-rail .rr-page');
+        input?.focus();
+        input?.select();
+      });
+    case 'nextTab':
+      switchTab(1);
+      return true;
+    case 'prevTab':
+      switchTab(-1);
+      return true;
+    case 'zoomIn':
+      return cmd('zoom:in');
+    case 'zoomOut':
+      return cmd('zoom:out');
+    case 'zoomTo':
+      return needDoc((d) => showZoomMenu(d));
+    case 'actualSize':
+      return cmd('zoom:100');
+    case 'fitPage':
+      return cmd('zoom:fit-page');
+    case 'fitWidth':
+    case 'fitVisible':
+      return cmd('zoom:fit-width');
+    case 'rotateCw':
+      return cmd('rotate:clockwise');
+    case 'rotateCcw':
+      return cmd('rotate:counter-clockwise');
+    case 'fullScreen':
+      return needDoc(() => void toggleFullScreen());
+    case 'readMode':
+      return needDoc(() =>
+        setReadMode(!document.body.classList.contains('is-reading'))
+      );
+    case 'navPane':
+      return needDoc((d) =>
+        viewer.toggleSidebar(d.id, 'sidebar-panel', 'thumbnails')
+      );
+    case 'toolsPane':
+      return needDoc((d) => {
+        d.panelOpen = !d.panelOpen;
+        renderDocChrome(d);
+      });
+    case 'toolHand':
+      return cmd('pan:toggle');
+    case 'toolSelect':
+      return needDoc((d) => setAnnot(d, 'select'));
+    case 'toolZoom':
+      return cmd('zoom:marquee');
+    case 'toolNote':
+      return annot('comment', 'annotation:add-comment');
+    case 'toolHighlight':
+      return annot('highlight', 'annotation:add-highlight');
+    case 'toolMarkup':
+      markupIdx = (markupIdx + 1) % MARKUPS.length;
+      return annot('more', MARKUPS[markupIdx]);
+    case 'toolText':
+      return annot('text', 'annotation:add-text');
+    case 'toolDraw':
+      return annot('ink', 'annotation:add-ink');
+    case 'toolShapes':
+      shapeIdx = (shapeIdx + 1) % SHAPES.length;
+      return annot('more', SHAPES[shapeIdx]);
+    case 'toolStamp':
+      return annot('more', 'annotation:add-stamp');
+    case 'toolLink':
+      return annot('more', 'annotation:add-link');
+    case 'toolRedact':
+      return needDoc((d) => runViewerAction(d, getTool('redact')!));
+    case 'toolEditText':
+      return tool('edit-pdf-text', 'Edit text & images');
+    case 'toolCrop':
+      return tool('crop-pdf');
+  }
+  return false;
+}
+
+/** The element that really has focus, looking inside shadow roots */
+function deepTarget(e: Event): HTMLElement | null {
+  return (e.composedPath()[0] as HTMLElement) ?? null;
+}
+
+const isEditable = (el: HTMLElement | null) =>
+  !!el &&
+  (el.isContentEditable ||
+    /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) ||
+    !!el.closest?.('[contenteditable="true"]'));
+
+/** Shared by the shell and by keys forwarded from tool frames */
+function handleKey(e: KeyInput, editing: boolean, fromFrame = false): boolean {
+  const hasMod = e.ctrlKey || e.metaKey || e.altKey;
+  // Leave typing alone: plain keys and text-editing combos in fields
+  if (editing && (!hasMod || /^[zyxcva]$/i.test(e.key))) return false;
+  // Arrow/Home/End navigate menus while one is open
+  if (!hasMod && closePopover && /^(Arrow|Home|End)/.test(e.key)) return false;
+  const shortcut = findShortcut(e, isMac, getPrefs().singleKey);
+  if (!shortcut) return false;
+  // Inside a tool, undo/find/tool keys belong to the tool, not the document
+  if (
+    fromFrame &&
+    (shortcut.singleKey ||
+      /^(undo|redo|find|findAdvanced|findNext|findPrev|nextPage|prevPage|firstPage|lastPage)$/.test(
+        shortcut.id
+      ))
+  ) {
+    return false;
+  }
+  return runShortcut(shortcut.id);
+}
+
 window.addEventListener(
   'keydown',
   (e) => {
-    const mod = e.ctrlKey || e.metaKey;
-    if (!mod) return;
-    const doc = activeDoc();
-    const k = e.key.toLowerCase();
-    const run = (fn: () => void) => {
+    if (e.key === 'Escape') {
+      if (document.body.classList.contains('is-reading')) {
+        setReadMode(false);
+        e.preventDefault();
+        return;
+      }
+      const doc = activeDoc();
+      if (doc?.activeAnnot && !closePopover && !isEditable(deepTarget(e))) {
+        setAnnot(doc, 'select');
+        return;
+      }
+    }
+    if (document.querySelector('.dlg-backdrop')) return;
+    if (handleKey(e, isEditable(deepTarget(e)))) {
       e.preventDefault();
       e.stopPropagation();
-      fn();
-    };
-    if (k === 'o') run(openFromDialog);
-    else if (k === 's' && doc) run(() => saveDoc(doc, e.shiftKey));
-    else if (k === 'p' && doc)
-      run(() => viewer.command(doc.id, 'document:print'));
-    else if (k === 'f' && doc)
-      run(() => viewer.command(doc.id, 'panel:toggle-search'));
-    else if (k === 'k')
-      run(() => (doc ? openFind($('#find-btn')) : openAllTools()));
-    else if (k === 'w' && activeId !== 'home') run(() => closeTab(activeId));
-    else if (k === 'h' && e.shiftKey) run(() => activate('home'));
-    else if (k === 'tab' && tabs.length) {
-      run(() => {
-        const ids = ['home', ...tabs.map((t) => t.id)];
-        const i = ids.indexOf(activeId);
-        activate(ids[(i + (e.shiftKey ? -1 : 1) + ids.length) % ids.length]);
-      });
     }
   },
   true
 );
+
+// Tool frames forward shortcut keys they don't use (see reskin.ts)
+window.addEventListener('message', (e: MessageEvent) => {
+  if (e.origin !== location.origin || e.data?.type !== 'acro:key') return;
+  if (document.querySelector('.dlg-backdrop')) return;
+  handleKey(e.data.key as KeyInput, !!e.data.editing, true);
+});
 
 let dragDepth = 0;
 const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
@@ -1827,19 +2641,37 @@ if (desktop) {
   document.body.classList.add('is-desktop', isMac ? 'is-mac' : 'is-win');
   desktop.onOpenFile((f) => void openDocument(toFile(f), { path: f.path }));
   void desktop.ready();
-  scheduleUpdateCheck(toast);
+  desktop.onMenuCommand?.((command) => {
+    if (command === 'about') return showAbout();
+    if (command === 'shortcuts') return showShortcuts();
+    if (command === 'undo' || command === 'redo') {
+      // Text fields (also inside tool frames) get normal text undo
+      const outer = document.activeElement;
+      const doc =
+        outer instanceof HTMLIFrameElement ? outer.contentDocument : document;
+      const focused = (doc?.activeElement ?? null) as HTMLElement | null;
+      if (doc && isEditable(focused)) {
+        doc.execCommand(command);
+        return;
+      }
+    }
+    runShortcut(command);
+  });
+  if (getPrefs().checkUpdates) scheduleUpdateCheck(toast);
 }
 
 declare const __APP_VERSION__: string;
 declare const __PAPERWING_VERSION__: string;
 declare const __PAPERWING_REPO__: string;
 
-if (import.meta.env.DEV) (window as any).__acro = { viewer, tabs };
+// Inspection hook for the end-to-end tests (desktop/tests)
+(window as any).__acro = { viewer, tabs };
 
 hydrateIcons();
 renderRecommended();
 renderAllTools();
 activate('home');
+void restoreSession();
 
 // Dismiss the launch screen as soon as the UI is ready. It stays up for a
 // beat on very fast starts so it reads as a splash rather than a flicker.
@@ -1851,5 +2683,10 @@ activate('home');
   setTimeout(() => {
     splash?.classList.add('is-done');
     setTimeout(() => splash?.remove(), 300);
+    // Warm the PDF engine while the user looks at Home
+    const idle =
+      (window as any).requestIdleCallback ??
+      ((fn: () => void) => setTimeout(fn, 600));
+    idle(() => void viewer.warmUp(), { timeout: 2000 });
   }, wait);
 }

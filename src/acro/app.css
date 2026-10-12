@@ -1469,3 +1469,183 @@ body.is-dragging #drop-overlay {
 .about a {
   color: var(--accent);
 }
+
+/* ------------------------------------------------------------------ */
+/* Unsaved changes, pins, dialogs, preferences, read mode              */
+/* ------------------------------------------------------------------ */
+
+/* A dot replaces the close button on tabs with unsaved changes */
+.tab.is-dirty .tab-close .ic {
+  visibility: hidden;
+}
+.tab.is-dirty .tab-close {
+  position: relative;
+}
+.tab.is-dirty .tab-close::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-2);
+}
+.tab.is-dirty .tab-close:hover .ic {
+  visibility: visible;
+}
+.tab.is-dirty .tab-close:hover::after {
+  display: none;
+}
+.tab[draggable='true'] {
+  -webkit-user-drag: element;
+}
+
+/* Pin buttons in the tools panel */
+.lp-tool .lp-pin {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  border-radius: 4px;
+  color: var(--text-3);
+  opacity: 0;
+}
+.lp-tool:hover .lp-pin,
+.lp-tool:focus-visible .lp-pin,
+.lp-pin.is-on {
+  opacity: 1;
+}
+.lp-pin:hover {
+  background: var(--active);
+  color: var(--text);
+}
+.lp-pin.is-on {
+  color: var(--accent);
+}
+.lp-pin.is-on svg {
+  fill: currentColor;
+}
+
+/* Dialog buttons */
+.dlg-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+}
+.dlg-actions .quiet-btn {
+  margin-right: auto;
+}
+.quiet-btn {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.quiet-btn:hover {
+  background: var(--hover-soft);
+  color: var(--text);
+}
+.dlg .accent-btn,
+.dlg .pill-btn {
+  height: 32px;
+}
+
+/* Document properties */
+.props-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.props-table th {
+  width: 38%;
+  padding: 7px 12px 7px 0;
+  color: var(--text-3);
+  font-weight: 600;
+  text-align: left;
+  vertical-align: top;
+}
+.props-table td {
+  padding: 7px 0;
+  word-break: break-all;
+}
+.props-table tr + tr > * {
+  border-top: 1px solid var(--border);
+}
+
+/* Preferences & shortcuts */
+.dlg-body.prefs,
+.dlg-body.shortcuts {
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+}
+.pref-group {
+  margin: 14px 0 6px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.pref-group:first-child {
+  margin-top: 0;
+}
+.pref-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+.pref-row input[type='checkbox'] {
+  order: 2;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+.pref-row span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pref-row small {
+  color: var(--text-3);
+  font-size: 13px;
+}
+.pref-select {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+}
+.kbd-table td:last-child {
+  white-space: nowrap;
+}
+.find-empty {
+  padding: 12px 10px;
+  color: var(--text-3);
+}
+.find-results .menu-item:focus-visible {
+  outline: none;
+  background: var(--hover-soft);
+}
+
+/* Read mode / full screen: just the document */
+body.is-reading #titlebar,
+body.is-reading #globalbar,
+body.is-reading #left-panel,
+body.is-reading #quickbar,
+body.is-reading #right-rail {
+  display: none !important;
+}
+body.is-reading #views {
+  border-top: 0;
+}

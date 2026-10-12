@@ -14,6 +14,18 @@ contextBridge.exposeInMainWorld('paperwing', {
   writeFile: (path, data) =>
     ipcRenderer.invoke('paperwing:write-file', path, data),
   saveAs: (name, data) => ipcRenderer.invoke('paperwing:save-as', name, data),
+  confirmClose: () => ipcRenderer.invoke('paperwing:confirm-close'),
+  onCloseRequested: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('paperwing:close-requested', listener);
+    return () =>
+      ipcRenderer.removeListener('paperwing:close-requested', listener);
+  },
+  onMenuCommand: (callback) => {
+    const listener = (_e, command) => callback(command);
+    ipcRenderer.on('paperwing:menu', listener);
+    return () => ipcRenderer.removeListener('paperwing:menu', listener);
+  },
   onOpenFile: (callback) => {
     const listener = (_e, file) => callback(file);
     ipcRenderer.on('paperwing:open-file', listener);

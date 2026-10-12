@@ -29,6 +29,11 @@ interface DesktopBridge {
     data: Uint8Array
   ): Promise<{ path: string; name: string } | null>;
   onOpenFile(callback: (file: DesktopFile) => void): () => void;
+  /** The window is about to close; call confirmClose() to let it */
+  onCloseRequested?(callback: () => void): () => void;
+  confirmClose(): Promise<void>;
+  /** Application-menu commands (macOS menu bar) */
+  onMenuCommand?(callback: (command: string) => void): () => void;
 }
 
 export const desktop: DesktopBridge | undefined = (window as any).paperwing;

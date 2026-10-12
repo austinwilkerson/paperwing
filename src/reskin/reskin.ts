@@ -13,9 +13,18 @@
  */
 
 import { applyTheme, onThemeChange } from './theme';
+import { initApps } from './apps';
+import { initFrames } from './frames';
+
+/** Page id for page-specific styling, e.g. <html data-page="sign-pdf"> */
+document.documentElement.dataset.page =
+  (location.pathname.split('/').pop() || 'index').replace(/\.html$/, '') ||
+  'index';
 
 applyTheme();
 onThemeChange(() => {});
+initApps();
+initFrames();
 
 const embedded = window.self !== window.top;
 
@@ -53,6 +62,41 @@ if (embedded) {
     if (e.data?.type === 'acro:load-files') loadFiles(e.data.files as File[]);
   });
 
+  // App-level shortcuts (Ctrl+S, Ctrl+W, Ctrl+Tab, F4...) still work while
+  // focus is inside the tool: forward the ones the tool didn't handle.
+  window.addEventListener('keydown', (e) => {
+    if (e.defaultPrevented) return;
+    const mod = e.ctrlKey || e.metaKey || e.altKey;
+    if (!mod && !/^F\d{1,2}$/.test(e.key)) return;
+    const t = e.target as HTMLElement | null;
+    const editing =
+      !!t &&
+      (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+    window.parent.postMessage(
+      {
+        type: 'acro:key',
+        editing,
+        key: {
+          key: e.key,
+          code: e.code,
+          ctrlKey: e.ctrlKey,
+          metaKey: e.metaKey,
+          shiftKey: e.shiftKey,
+          altKey: e.altKey,
+        },
+      },
+      location.origin
+    );
+    // Stop the browser acting on app shortcuts (e.g. Ctrl+P printing the tool)
+    if (
+      mod &&
+      /^[spwofdklnqyh0-9=+\-]$/i.test(e.key) &&
+      !(editing && /^[zyxcva]$/i.test(e.key))
+    ) {
+      e.preventDefault();
+    }
+  });
+
   const announceReady = () =>
     window.parent.postMessage({ type: 'acro:ready' }, location.origin);
   if (document.readyState === 'complete') announceReady();
@@ -75,4 +119,6 @@ function loadFiles(files: File[]) {
   for (const f of input.multiple ? files : files.slice(0, 1)) dt.items.add(f);
   input.files = dt.files;
   input.dispatchEvent(new Event('change', { bubbles: true }));
+  // The shell supplied the document: collapse the big drop zone
+  document.documentElement.classList.add('rs-has-doc');
 }

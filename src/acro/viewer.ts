@@ -90,6 +90,7 @@ export class Viewer {
   private toolListeners = new Set<
     (tabId: string, toolId: string | null) => void
   >();
+  private changeListeners = new Set<(tabId: string) => void>();
 
   constructor(private host: HTMLElement) {}
 
@@ -143,6 +144,12 @@ export class Viewer {
         if (e?.documentId) this.stripChrome(e.documentId);
       });
 
+      // Any undoable edit (annotations, redactions...) marks the doc changed
+      this.cap('history').onHistoryChange((e: any) => {
+        const tabId = this.tabFor(e.documentId);
+        if (tabId) this.changeListeners.forEach((fn) => fn(tabId));
+      });
+
       this.cap('annotation').onActiveToolChange((e: any) => {
         const tabId = this.tabFor(e.documentId);
         if (tabId)
@@ -183,6 +190,46 @@ export class Viewer {
   onPage(fn: (tabId: string, info: PageInfo) => void): Unsub {
     this.pageListeners.add(fn);
     return () => this.pageListeners.delete(fn);
+  }
+
+  /** Start the PDF engine early (idle time after launch) so the first
+   *  document opens without waiting for WebAssembly to compile. */
+  warmUp(): Promise<void> {
+    return this.init();
+  }
+
+  /** Fires after every undoable edit in a document */
+  onChange(fn: (tabId: string) => void): Unsub {
+    this.changeListeners.add(fn);
+    return () => this.changeListeners.delete(fn);
+  }
+
+  /** Move between search results in the find panel */
+  searchStep(tabId: string, dir: 1 | -1) {
+    const id = this.docIds.get(tabId);
+    if (!id) return;
+    const s = this.cap('search').forDocument(id);
+    if (dir > 0) s.nextResult();
+    else s.previousResult();
+  }
+
+  history(tabId: string, action: 'undo' | 'redo') {
+    const id = this.docIds.get(tabId);
+    if (!id) return;
+    const h = this.cap('history').forDocument(id);
+    if (action === 'undo' ? h.canUndo() : h.canRedo()) h[action]();
+  }
+
+  /** Page count and size of the first page (PDF points) */
+  docInfo(
+    tabId: string
+  ): { pages: number; width: number; height: number } | null {
+    const id = this.docIds.get(tabId);
+    if (!id || !this.registry) return null;
+    const doc = this.cap('document-manager').getDocument(id);
+    if (!doc) return null;
+    const size = doc.pages?.[0]?.size ?? { width: 0, height: 0 };
+    return { pages: doc.pageCount, width: size.width, height: size.height };
   }
 
   /** Fires when the active annotation tool changes (null = select) */

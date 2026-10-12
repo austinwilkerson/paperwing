@@ -45,6 +45,8 @@ import {
   Copy,
   Check,
   SunMoon,
+  Settings,
+  Pin,
   type IconNode,
 } from 'lucide';
 
@@ -93,6 +95,8 @@ const ICONS = {
   restore: Copy,
   check: Check,
   theme: SunMoon,
+  settings: Settings,
+  pin: Pin,
 } satisfies Record<string, IconNode>;
 
 export type IconName = keyof typeof ICONS;

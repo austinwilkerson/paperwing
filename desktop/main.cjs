@@ -60,6 +60,8 @@ if (!app.requestSingleInstanceLock()) {
 
 let mainWindow = null;
 let rendererReady = false;
+/** Set once the renderer has dealt with unsaved documents */
+let allowClose = false;
 const pendingFiles = [];
 
 const isPdfPath = (p) =>
@@ -243,6 +245,12 @@ function createWindow() {
   });
 
   mainWindow.once('ready-to-show', () => mainWindow.show());
+  // Let the app ask about unsaved documents before the window closes
+  mainWindow.on('close', (e) => {
+    if (allowClose || !rendererReady) return;
+    e.preventDefault();
+    mainWindow.webContents.send('paperwing:close-requested');
+  });
   mainWindow.on('closed', () => {
     mainWindow = null;
     rendererReady = false;
@@ -280,6 +288,12 @@ ipcMain.handle('paperwing:ready', (e) => {
 ipcMain.handle('paperwing:set-theme', (e, pref) => {
   if (!senderIsApp(e)) return;
   nativeTheme.themeSource = ['light', 'dark'].includes(pref) ? pref : 'system';
+});
+
+ipcMain.handle('paperwing:confirm-close', (e) => {
+  if (!senderIsApp(e) || !mainWindow) return;
+  allowClose = true;
+  mainWindow.close();
 });
 
 ipcMain.handle('paperwing:info', () => ({
@@ -333,28 +347,105 @@ ipcMain.handle('paperwing:open-dialog', async (e) => {
 
 function buildMenu() {
   if (!IS_MAC) {
+    // Windows/Linux: no menu bar; the app handles every shortcut itself
     Menu.setApplicationMenu(null);
     return;
   }
-  // macOS needs an application menu for Cmd+C/V/Q etc.
+  // macOS: menu accelerators win over page key handling, so each item
+  // forwards its command to the app instead of acting on the page.
+  const send = (command) => () =>
+    mainWindow?.webContents.send('paperwing:menu', command);
+  const item = (label, accelerator, command) => ({
+    label,
+    accelerator,
+    click: send(command),
+  });
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
-      { role: 'appMenu' },
-      { role: 'editMenu' },
+      {
+        label: app.name,
+        submenu: [
+          item('About Paperwing', undefined, 'about'),
+          { type: 'separator' },
+          item('Preferences…', 'Cmd+,', 'prefs'),
+          { type: 'separator' },
+          { role: 'services' },
+          { type: 'separator' },
+          { role: 'hide' },
+          { role: 'hideOthers' },
+          { role: 'unhide' },
+          { type: 'separator' },
+          { role: 'quit' },
+        ],
+      },
+      {
+        label: 'File',
+        submenu: [
+          item('Open…', 'Cmd+O', 'open'),
+          item('Create PDF…', 'Cmd+N', 'create'),
+          item('Reopen Closed Document', 'Shift+Cmd+T', 'reopen'),
+          { type: 'separator' },
+          item('Save', 'Cmd+S', 'save'),
+          item('Save As…', 'Shift+Cmd+S', 'saveAs'),
+          item('Print…', 'Cmd+P', 'print'),
+          item('Document Properties…', 'Cmd+D', 'properties'),
+          { type: 'separator' },
+          item('Close Document', 'Cmd+W', 'close'),
+          item('Close All', 'Alt+Cmd+W', 'closeAll'),
+        ],
+      },
+      {
+        label: 'Edit',
+        submenu: [
+          item('Undo', 'Cmd+Z', 'undo'),
+          item('Redo', 'Shift+Cmd+Z', 'redo'),
+          { type: 'separator' },
+          { role: 'cut' },
+          { role: 'copy' },
+          { role: 'paste' },
+          { role: 'selectAll' },
+          { type: 'separator' },
+          item('Find', 'Cmd+F', 'find'),
+          item('Find Next', 'Cmd+G', 'findNext'),
+          item('Find Previous', 'Shift+Cmd+G', 'findPrev'),
+          item('Search Tools & Commands…', 'Shift+Cmd+P', 'palette'),
+        ],
+      },
       {
         label: 'View',
         submenu: [
-          { role: 'resetZoom' },
-          { role: 'zoomIn' },
-          { role: 'zoomOut' },
+          item('Zoom In', 'Cmd+=', 'zoomIn'),
+          item('Zoom Out', 'Cmd+-', 'zoomOut'),
+          item('Zoom To…', 'Cmd+Y', 'zoomTo'),
+          item('Actual Size', 'Cmd+1', 'actualSize'),
+          item('Fit Page', 'Cmd+0', 'fitPage'),
+          item('Fit Width', 'Cmd+2', 'fitWidth'),
           { type: 'separator' },
-          { role: 'togglefullscreen' },
+          item('Rotate Clockwise', 'Shift+Cmd+=', 'rotateCw'),
+          item('Rotate Counterclockwise', 'Shift+Cmd+-', 'rotateCcw'),
+          { type: 'separator' },
+          item('Read Mode', 'Cmd+H', 'readMode'),
+          item('Full Screen', 'Cmd+L', 'fullScreen'),
+          item('Page Thumbnails', 'F4', 'navPane'),
+          item('Tools Panel', 'Shift+F4', 'toolsPane'),
         ],
       },
-      { role: 'windowMenu' },
+      {
+        label: 'Window',
+        submenu: [
+          { role: 'minimize' },
+          { role: 'zoom' },
+          { type: 'separator' },
+          item('Next Document', 'Ctrl+Tab', 'nextTab'),
+          item('Previous Document', 'Ctrl+Shift+Tab', 'prevTab'),
+          { type: 'separator' },
+          { role: 'front' },
+        ],
+      },
       {
         role: 'help',
         submenu: [
+          item('Keyboard Shortcuts', undefined, 'shortcuts'),
           {
             label: 'Paperwing on GitHub',
             click: () =>

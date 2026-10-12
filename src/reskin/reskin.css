@@ -10,6 +10,8 @@
  * for extra specificity, so stylesheet load order doesn't matter.
  */
 
+@import './apps.css';
+
 @font-face {
   font-family: 'Source Sans 3';
   font-style: normal;
@@ -60,6 +62,10 @@
   --rs-thumb: #c4c4c4;
   --rs-thumb-hover: #a8a8a8;
   --rs-focus-ring: rgb(59 99 251 / 0.25);
+  --rs-dialog-shadow:
+    0 10px 32px rgb(0 0 0 / 0.18), 0 0 0 1px rgb(0 0 0 / 0.05);
+  --rs-on-accent: #ffffff;
+  --rs-brand: #d7193a;
   accent-color: var(--rs-accent);
   color-scheme: light;
 }
@@ -285,6 +291,8 @@
     --rs-thumb: #4a4a4a;
     --rs-thumb-hover: #5e5e5e;
     --rs-focus-ring: rgb(92 124 255 / 0.35);
+    --rs-dialog-shadow:
+      0 12px 40px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.08);
 
     /* Neutral (not blue-tinted) greys for upstream's dark classes */
     --color-gray-50: #fafafa;
@@ -334,6 +342,8 @@
   --rs-thumb: #4a4a4a;
   --rs-thumb-hover: #5e5e5e;
   --rs-focus-ring: rgb(92 124 255 / 0.35);
+  --rs-dialog-shadow:
+    0 12px 40px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.08);
 
   /* Neutral (not blue-tinted) greys for upstream's dark classes */
   --color-gray-50: #fafafa;
@@ -425,6 +435,34 @@ html .peer:checked ~ .peer-checked\:after\:border-white::after {
 html [class~='bg-black'][class*='bg-opacity-'],
 html [class~='bg-gray-900'][class*='bg-opacity-'] {
   background-color: rgb(0 0 0 / 0.45);
+  /* page-number badges etc. sit directly on these: keep their text white */
+  --color-white: #ffffff;
+}
+
+/* Colour families upstream uses but the theme doesn't otherwise map */
+:root {
+  --color-slate-50: var(--color-gray-50);
+  --color-slate-100: var(--color-gray-100);
+  --color-slate-200: var(--color-gray-200);
+  --color-slate-300: var(--color-gray-300);
+  --color-slate-400: var(--color-gray-400);
+  --color-slate-500: var(--color-gray-500);
+  --color-slate-600: var(--color-gray-600);
+  --color-slate-700: var(--color-gray-700);
+  --color-slate-800: var(--color-gray-800);
+  --color-slate-900: var(--color-gray-900);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --color-violet-300: #7c3aed;
+    --color-rose-300: #e11d48;
+    --color-teal-300: #0d9488;
+  }
+}
+:root[data-theme='light'] {
+  --color-violet-300: #7c3aed;
+  --color-rose-300: #e11d48;
+  --color-teal-300: #0d9488;
 }
 
 /* ------------------------------------------------------------------ */
@@ -572,4 +610,328 @@ html.rs-embedded #tool-uploader {
 html.rs-embedded #tool-uploader h1,
 html.rs-embedded #tool-uploader h1 + p {
   display: none;
+}
+
+/* ================================================================== */
+/* Acrobat-style components (Spectrum-like), shared by all tool pages  */
+/* Low-specificity :where() so page-specific rules in apps.css win.     */
+/* ================================================================== */
+
+/* --- Layout inside the shell ------------------------------------- */
+html.rs-embedded #uploader {
+  min-height: 100vh;
+  justify-content: flex-start;
+  padding: 16px 20px 24px;
+  background: transparent;
+}
+html.rs-embedded #tool-uploader {
+  max-width: 880px;
+  margin-inline: auto;
+  padding: 0;
+  background: transparent;
+  color: var(--rs-text);
+}
+@media (max-width: 520px) {
+  html.rs-embedded #uploader {
+    padding: 14px 14px 20px;
+  }
+}
+
+/* --- Text --------------------------------------------------------- */
+:where(#tool-uploader, [id$='-modal']) :where(label) {
+  color: var(--rs-text-2);
+}
+:where(#tool-uploader) :where(h2, h3) {
+  color: var(--rs-text);
+  font-weight: 700;
+}
+:where(html) :where([class~='text-indigo-400'], [class~='text-indigo-300']) {
+  color: var(--rs-accent);
+}
+
+/* --- Fields ------------------------------------------------------- */
+:where(html)
+  :where(
+    input:not(
+      [type='checkbox'],
+      [type='radio'],
+      [type='range'],
+      [type='color'],
+      [type='file'],
+      [type='hidden']
+    ),
+    select
+  ) {
+  min-height: 32px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+:where(html) :where(textarea) {
+  border-radius: 4px;
+  font-size: 14px;
+}
+:where(html) :where(select) {
+  padding-block: 4px;
+  cursor: pointer;
+}
+:where(html) :where(input, select, textarea):where(:disabled) {
+  opacity: 0.55;
+}
+:where(html) :where(input[type='checkbox'], input[type='radio']) {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--rs-accent);
+  cursor: pointer;
+}
+:where(html) :where(input[type='range']) {
+  accent-color: var(--rs-accent);
+}
+html input[type='color'] {
+  border-color: var(--rs-border-strong) !important;
+}
+
+/* --- Buttons ------------------------------------------------------ */
+/* Primary: blue pill */
+:where(html)
+  :where(
+    button[class~='bg-indigo-600'],
+    button[class~='bg-indigo-500'],
+    a[class~='bg-indigo-600'],
+    label[class~='bg-indigo-600']
+  ) {
+  border-radius: 16px;
+  font-weight: 700;
+  min-height: 32px;
+}
+/* Secondary: outline pill */
+:where(html)
+  :where(
+    button[class~='bg-gray-700'],
+    button[class~='bg-gray-600'],
+    a[class~='bg-gray-700']
+  ):not(.rounded-full) {
+  background-color: transparent;
+  border: 2px solid var(--rs-border-strong);
+  border-radius: 16px;
+  font-weight: 600;
+  min-height: 32px;
+  color: var(--rs-text);
+}
+:where(html)
+  :where(
+    button[class~='bg-gray-700'],
+    button[class~='bg-gray-600'],
+    a[class~='bg-gray-700']
+  ):not(.rounded-full):hover {
+  background-color: var(--rs-surface-hover);
+  border-color: var(--rs-text-3);
+}
+/* Danger buttons stay red, as pills */
+:where(html)
+  :where(button[class~='bg-red-600'], button[class~='bg-red-500']):not(
+    .rounded-full
+  ) {
+  border-radius: 16px;
+  font-weight: 700;
+}
+/* Primary action at the bottom of a tool: always reachable */
+html.rs-embedded #process-btn,
+html.rs-embedded #tool-uploader > .btn-gradient {
+  position: sticky;
+  bottom: 12px;
+  z-index: 5;
+  min-height: 38px;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.14);
+}
+html .btn-gradient:disabled {
+  background: var(--rs-surface-active);
+  color: var(--rs-text-3);
+  opacity: 1;
+}
+
+/* Add / clear files */
+html #add-more-btn {
+  background: transparent;
+  border: 2px solid var(--rs-border-strong);
+  color: var(--rs-text);
+  border-radius: 16px;
+  --color-white: var(--rs-text);
+}
+html #add-more-btn:hover {
+  background: var(--rs-surface-hover);
+}
+html #clear-files-btn {
+  background: transparent;
+  border: 0;
+  color: var(--rs-text-2);
+}
+html #clear-files-btn:hover {
+  background: var(--rs-surface-hover);
+  color: var(--rs-text);
+}
+
+/* --- Drop zone ---------------------------------------------------- */
+html #drop-zone {
+  border-width: 1.5px;
+  border-radius: 8px;
+}
+html #drop-zone .ph-upload-simple {
+  font-size: 32px;
+}
+html #drop-zone .font-semibold {
+  color: var(--rs-accent);
+}
+/* Once a document is loaded, the drop zone shrinks to a single row */
+html #tool-uploader:has(#file-display-area > *) #drop-zone {
+  height: auto;
+  min-height: 56px;
+}
+html #tool-uploader:has(#file-display-area > *) #drop-zone > div {
+  flex-direction: row;
+  gap: 10px;
+  padding: 10px 14px;
+}
+html #tool-uploader:has(#file-display-area > *) #drop-zone > div > :is(i, svg) {
+  margin: 0;
+  font-size: 22px;
+}
+html #tool-uploader:has(#file-display-area > *) #drop-zone > div > p {
+  margin: 0;
+}
+html #tool-uploader:has(#file-display-area > *) #drop-zone > div > p ~ p {
+  display: none;
+}
+
+/* --- File list (Acrobat "Combine files"-style rows) ---------------- */
+html #file-display-area > div {
+  position: relative;
+  background: var(--rs-surface);
+  border: 1px solid var(--rs-border);
+  border-radius: 8px;
+  padding: 10px 12px 10px 52px;
+  min-height: 56px;
+  --color-white: var(--rs-text);
+}
+html #file-display-area > div::before {
+  content: 'PDF';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  display: grid;
+  place-items: end center;
+  width: 28px;
+  height: 34px;
+  padding-bottom: 4px;
+  transform: translateY(-50%);
+  border: 1px solid var(--rs-border-strong);
+  border-radius: 3px;
+  background: var(--rs-surface);
+  color: var(--rs-brand);
+  font: 700 8px/1 var(--rs-font);
+  letter-spacing: 0.02em;
+}
+html #file-display-area > div:hover {
+  border-color: var(--rs-border-strong);
+}
+html #file-display-area :is(.text-red-400, [class~='hover:text-red-300']) {
+  border-radius: 6px;
+  padding: 4px;
+}
+html
+  #file-display-area
+  :is(.text-red-400, [class~='hover:text-red-300']):hover {
+  background: var(--rs-surface-hover);
+}
+
+/* --- Panels / option groups --------------------------------------- */
+:where(#tool-uploader)
+  :where(
+    [class~='bg-gray-900'][class*='rounded'],
+    [class~='bg-gray-700'][class*='rounded']
+  ):not(button):not(#drop-zone) {
+  border-radius: 8px;
+}
+:where(#tool-uploader)
+  :where(details, [class~='border-gray-700'][class*='rounded']) {
+  border-color: var(--rs-border);
+}
+
+/* --- Page thumbnails (organize, split, rotate, delete...) ---------- */
+html .page-thumbnail,
+html .page-thumbnail-wrapper > div {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 6px;
+}
+html .page-thumbnail:hover,
+html .page-thumbnail-wrapper > div:hover {
+  border-color: var(--rs-border-strong);
+}
+html .page-thumbnail :is(img, canvas),
+html .page-thumbnail-wrapper :is(img, canvas) {
+  background: #fff;
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 0.18),
+    0 0 0 1px rgb(0 0 0 / 0.06);
+}
+html .page-thumbnail.selected,
+html .page-thumbnail[class~='border-indigo-500'],
+html .page-thumbnail-wrapper .selected {
+  border-color: var(--rs-accent);
+  background: var(--rs-accent-tint);
+}
+
+/* --- Dialogs (loader, alert, password, page preview) --------------- */
+html #loader-modal > div,
+html #alert-modal > div,
+html :is([id$='-modal'], .modal) > [class~='bg-gray-800'] {
+  border: 0;
+  border-radius: 8px;
+  box-shadow: var(--rs-dialog-shadow);
+  background: var(--rs-surface);
+}
+html #loader-modal > div {
+  min-width: 260px;
+  padding: 28px 32px;
+}
+html #loader-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--rs-text);
+}
+html .solid-spinner {
+  width: 40px;
+  height: 40px;
+  border-width: 4px;
+}
+html #alert-title {
+  font-size: 18px;
+  color: var(--rs-text);
+}
+html #alert-message {
+  font-size: 14px;
+  color: var(--rs-text-2);
+}
+html #alert-ok {
+  display: block;
+  width: auto;
+  min-width: 88px;
+  margin-left: auto;
+  min-height: 32px;
+  padding: 0 18px;
+  border-radius: 16px;
+  font-weight: 700;
+}
+
+/* --- Misc upstream rules -------------------------------------------- */
+html .sortable-ghost {
+  background: var(--rs-accent-tint);
+}
+html .shortcut-key {
+  background: var(--rs-surface-hover);
+  border-color: var(--rs-border-strong);
+  color: var(--rs-text);
+}
+html ::selection {
+  background: color-mix(in srgb, var(--rs-accent) 30%, transparent);
 }

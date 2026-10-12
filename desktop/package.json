@@ -18,10 +18,12 @@
     "dist:win": "node scripts/build-web.mjs && electron-builder --win --publish never",
     "dist:mac": "node scripts/build-web.mjs && electron-builder --mac --publish never",
     "dist:linux": "node scripts/build-web.mjs && electron-builder --linux --publish never",
-    "pack": "electron-builder --dir --publish never"
+    "pack": "electron-builder --dir --publish never",
+    "test:e2e": "node --test --test-concurrency=1 tests/e2e.test.mjs"
   },
   "devDependencies": {
     "electron": "44.4.5",
-    "electron-builder": "26.16.1"
+    "electron-builder": "26.16.1",
+    "puppeteer-core": "25.12.0"
   }
 }
