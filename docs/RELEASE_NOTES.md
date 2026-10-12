@@ -1,20 +1,17 @@
-## Paperwing 1.0 — the free, open-source alternative to Adobe Acrobat
+## Paperwing 1.0.1
 
-Paperwing brings a familiar Acrobat-style desktop workspace to Windows and macOS. It's built on
-[BentoPDF](https://github.com/alam00000/bentopdf): every tool and all PDF processing come from
-BentoPDF, running locally on your computer, and Paperwing adds the desktop app and interface. No
-account, no subscription.
+A small update to the free, open-source alternative to Adobe Acrobat.
 
-### Highlights
+### What's changed
 
-- **Familiar workspace** — tabs, Home, a searchable All tools sidebar, Edit / Convert / E-Sign panels, floating quick
-  toolbar and a navigation rail with thumbnails, comments, bookmarks and find
-- **100+ tools** — edit text & images, annotate, redact, fill & sign, convert to and from Office and
-  image formats, combine, split, organize, compress, OCR, protect, compare and more
-- **Light & dark themes** that follow your system
-- **Acrobat keyboard shortcuts**, including single-key tool accelerators
-- **Command palette**, pinned tools, unsaved-change protection, session restore and reopen closed tab
-- **Portable Windows build** — unzip and run, from a USB stick if you like
+- **Annotation styles open on the right.** Colour, opacity, stroke width and the other style
+  options now slide out beside the navigation rail, like comments and thumbnails, instead of
+  covering the floating annotation toolbar on the left.
+- **New Annotation style button** on the right rail, to open and close the styles at any time.
+
+If you have 1.0.0, Paperwing will let you know this version is available (it checks once a day):
+download it below and install it over the old one. New to Paperwing? See the [1.0 release notes](https://github.com/rohanvijaykumar/paperwing/releases/tag/v1.0.0)
+and the [full changelog](https://github.com/rohanvijaykumar/paperwing/blob/main/CHANGELOG.md).
 
 ### Downloads
 

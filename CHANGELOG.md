@@ -4,6 +4,14 @@ All notable changes to Paperwing are documented here. Paperwing follows
 [Semantic Versioning](https://semver.org). Changes to the underlying PDF engine are listed in
 [BentoPDF's releases](https://github.com/alam00000/bentopdf/releases).
 
+## [1.0.1] — 2026-10-12
+
+### Changed
+
+- Annotation styles (colour, opacity, stroke width…) open in the right sidebar beside the
+  navigation rail, instead of on the left over the floating annotation toolbar
+- New **Annotation style** button on the right rail
+
 ## [1.0.0] — 2026-10-12
 
 First public release, built on BentoPDF 2.8.8.
@@ -30,4 +38,5 @@ First public release, built on BentoPDF 2.8.8.
 - Tool pages run on their own origin, isolated from the workspace and its file bridge (see [SECURITY.md](SECURITY.md))
 - Unit tests for the shell and an end-to-end UI test suite
 
+[1.0.1]: https://github.com/rohanvijaykumar/paperwing/releases/tag/v1.0.1
 [1.0.0]: https://github.com/rohanvijaykumar/paperwing/releases/tag/v1.0.0
