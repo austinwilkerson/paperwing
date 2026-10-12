@@ -251,27 +251,6 @@
         </div>
       </section>
 
-      <!-- All tools -->
-      <section id="view-alltools" class="view">
-        <div class="at-head">
-          <h1>All tools</h1>
-          <button type="button" class="pill-btn" id="alltools-close">
-            Close
-          </button>
-        </div>
-        <div class="at-scroll">
-          <label class="at-search" data-icon="search">
-            <input
-              id="alltools-search"
-              type="search"
-              placeholder="Find any tool"
-              autocomplete="off"
-            />
-          </label>
-          <div id="alltools-groups"></div>
-        </div>
-      </section>
-
       <!-- Document -->
       <section id="view-doc" class="view">
         <div id="globalbar">
@@ -318,15 +297,26 @@
           <aside id="left-panel"></aside>
           <div id="doc-stage">
             <div id="viewer-host"></div>
+            <div id="doc-empty">
+              <div class="de-card">
+                <div class="de-title">
+                  Pick a tool, or open a PDF to work on
+                </div>
+                <div class="de-sub">
+                  Search every tool in the panel on the left, or drop files
+                  anywhere.
+                </div>
+                <button type="button" class="accent-btn" id="doc-empty-open">
+                  Select a file
+                </button>
+              </div>
+            </div>
             <div id="quickbar"></div>
             <div id="tool-full"></div>
           </div>
           <aside id="right-rail"></aside>
         </div>
       </section>
-
-      <!-- Tool opened without a document -->
-      <section id="view-tool" class="view"></section>
     </main>
 
     <div id="drop-overlay"><div>Drop files to open them</div></div>

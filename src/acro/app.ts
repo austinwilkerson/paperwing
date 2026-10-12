@@ -21,7 +21,13 @@ import { Viewer, type PageInfo } from './viewer';
 import { desktop, isMac, key, toFile } from './desktop';
 import { checkForUpdates, scheduleUpdateCheck } from './updates';
 import { findShortcut, formatCombo, SHORTCUTS, type KeyInput } from './keymap';
-import { getPrefs, noteToolUsed, setPrefs, togglePinned } from './prefs';
+import {
+  getPrefs,
+  noteToolUsed,
+  setPrefs,
+  togglePinned,
+  type Prefs,
+} from './prefs';
 import {
   applyTheme,
   getThemePref,
@@ -241,12 +247,18 @@ interface FrameTool {
   frame: HTMLIFrameElement;
   el: HTMLElement;
   files: File[];
+  /** id of the tab the tool belongs to */
+  owner: string;
 }
 
 interface DocTab {
   kind: 'doc';
   id: string;
   name: string;
+  /** Workspace without a document yet (a tool opened from Home, Create…) */
+  blank: boolean;
+  /** Search text in the All tools sidebar */
+  toolQuery: string;
   handle?: FileSystemFileHandle;
   /** File path on disk (desktop app) */
   path?: string;
@@ -268,20 +280,7 @@ interface DocTab {
 
 const isDirty = (t: Tab) => t.kind === 'doc' && t.version !== t.savedVersion;
 
-interface ToolTab {
-  kind: 'tool';
-  id: string;
-  name: string;
-  tool: FrameTool;
-}
-
-interface AllToolsTab {
-  kind: 'alltools';
-  id: 'alltools';
-  name: string;
-}
-
-type Tab = DocTab | ToolTab | AllToolsTab;
+type Tab = DocTab;
 
 const tabs: Tab[] = [];
 let activeId = 'home';
@@ -290,9 +289,10 @@ let tabSeq = 0;
 
 const viewer = new Viewer($('#viewer-host'));
 const activeTab = () => tabs.find((t) => t.id === activeId);
+/** The active tab if it holds a document (not an empty workspace) */
 const activeDoc = () => {
   const t = activeTab();
-  return t?.kind === 'doc' ? t : undefined;
+  return t && !t.blank ? t : undefined;
 };
 
 /* ------------------------------------------------------------------ */
@@ -340,7 +340,7 @@ function renderTabs() {
           },
           onClick: () => activate(t.id),
         },
-        t.kind === 'doc'
+        !t.blank
           ? h(
               'button',
               {
@@ -355,13 +355,17 @@ function renderTabs() {
               },
               icon('star', 14)
             )
-          : t.kind === 'alltools'
-            ? h('span', { class: 'tab-glyph' }, icon('grid', 14))
-            : h(
-                'span',
-                { class: 'tab-glyph' },
-                toolIcon(t.tool.tool.icon, t.tool.tool.color, 14)
-              ),
+          : h(
+              'span',
+              { class: 'tab-glyph' },
+              t.panelTool || t.fullTool
+                ? toolIcon(
+                    (t.panelTool ?? t.fullTool)!.tool.icon,
+                    (t.panelTool ?? t.fullTool)!.tool.color,
+                    14
+                  )
+                : icon('grid', 14)
+            ),
         h('span', { class: 'tab-label' }, t.name),
         iconBtn(
           'close',
@@ -391,14 +395,7 @@ function activate(id: string) {
   document
     .querySelectorAll<HTMLElement>('.view')
     .forEach((v) => v.classList.remove('is-active'));
-  const viewId =
-    id === 'home'
-      ? 'view-home'
-      : tab?.kind === 'alltools'
-        ? 'view-alltools'
-        : tab?.kind === 'tool'
-          ? 'view-tool'
-          : 'view-doc';
+  const viewId = id === 'home' ? 'view-home' : 'view-doc';
   $(`#${viewId}`).classList.add('is-active');
 
   // Per-tab frames stay in the DOM (detaching an iframe reloads it)
@@ -407,9 +404,8 @@ function activate(id: string) {
   });
 
   if (id === 'home') refreshRecent();
-  if (tab?.kind === 'alltools') $<HTMLInputElement>('#alltools-search').focus();
-  if (tab?.kind === 'doc') {
-    void viewer.activate(tab.id);
+  if (tab) {
+    if (!tab.blank) void viewer.activate(tab.id);
     renderDocChrome(tab);
   }
   renderTabs();
@@ -512,8 +508,12 @@ async function pickFiles(): Promise<({ file: File } & FileSource)[]> {
 }
 
 async function openFromDialog() {
-  for (const { file, ...source } of await pickFiles())
-    await openDocument(file, source);
+  // The first file fills an empty workspace if that's where we are
+  let into = activeTab()?.blank ? activeTab() : undefined;
+  for (const { file, ...source } of await pickFiles()) {
+    await openDocument(file, source, undefined, into);
+    into = undefined;
+  }
 }
 
 /** An already-open tab for the same file on disk, if any */
@@ -531,28 +531,19 @@ async function findOpenTab(source: FileSource): Promise<DocTab | undefined> {
   return undefined;
 }
 
-async function openDocument(
-  file: File,
-  source: FileSource = {},
-  recentId?: string
-) {
-  const existing = await findOpenTab(source);
-  if (existing) {
-    activate(existing.id);
-    return;
-  }
+/** Create a tab (document or empty workspace) and its tools panel */
+function createTab(name: string, blank: boolean): DocTab {
   const id = `doc-${++tabSeq}`;
   const panelEl = h('div', { class: 'lp', dataset: { owner: id } });
   $('#left-panel').append(panelEl);
   const tab: DocTab = {
     kind: 'doc',
     id,
-    name: file.name,
-    handle: source.handle,
-    path: source.path,
-    recentId,
+    name,
+    blank,
+    toolQuery: '',
     starred: false,
-    loading: true,
+    loading: !blank,
     panel: 'all',
     panelOpen: true,
     panelEl,
@@ -562,6 +553,41 @@ async function openDocument(
     savedVersion: 0,
   };
   tabs.push(tab);
+  return tab;
+}
+
+/** An empty workspace tab with the tools sidebar */
+function newWorkspace(name = 'Tools'): DocTab {
+  const tab = createTab(name, true);
+  activate(tab.id);
+  return tab;
+}
+
+async function openDocument(
+  file: File,
+  source: FileSource = {},
+  recentId?: string,
+  /** Load into this empty workspace instead of a new tab */
+  into?: DocTab
+) {
+  const existing = await findOpenTab(source);
+  if (existing) {
+    activate(existing.id);
+    return;
+  }
+  let tab: DocTab;
+  if (into && into.blank && tabs.includes(into)) {
+    tab = into;
+    tab.blank = false;
+    tab.loading = true;
+    tab.name = file.name;
+  } else {
+    tab = createTab(file.name, false);
+  }
+  tab.handle = source.handle;
+  tab.path = source.path;
+  tab.recentId = recentId;
+  const id = tab.id;
   activate(id);
 
   try {
@@ -575,6 +601,7 @@ async function openDocument(
   tab.loading = false;
   tab.page = viewer.pageInfo(id) ?? tab.page;
   if (activeId === id) renderDocChrome(tab);
+  else renderTabs();
 
   tab.recentId = (await rememberFile(file, source)) ?? recentId;
   persistSession();
@@ -591,7 +618,7 @@ async function openFiles(files: File[]) {
   for (const f of pdfs) await openDocument(f);
   if (others.length) {
     const tool = toolForFile(others[0]) ?? getTool('image-to-pdf');
-    if (tool) openToolTab(tool, others);
+    if (tool) void openToolOnDoc(newWorkspace(tool.name), tool, others);
   }
 }
 
@@ -608,13 +635,15 @@ function createFrameTool(
 ): FrameTool {
   const frame = h('iframe', {
     class: 'tool-frame',
-    src: tool.href,
+    // Tells the page whether it's in the side panel or the document area
+    src: `${tool.href}?embed=${tool.full ? 'full' : 'panel'}`,
     title: tool.name,
   });
   const ft: FrameTool = {
     tool,
     frame,
     files,
+    owner,
     el: h('div', { class: 'frame-wrap' }, frame),
   };
   ft.el.dataset.owner = owner;
@@ -641,7 +670,22 @@ window.addEventListener('message', async (e: MessageEvent) => {
     const blob = e.data.blob as Blob;
     const name = uniqueTabName(String(e.data.name || 'download'));
     if (isPdf({ name, type: blob.type })) {
-      await openDocument(new File([blob], name, { type: 'application/pdf' }));
+      const file = new File([blob], name, { type: 'application/pdf' });
+      const owner = tabs.find((t) => t.id === ft.owner);
+      if (owner?.blank) {
+        // A workspace tool (Combine, Create PDF…) made its first document:
+        // show it right there, with the tools sidebar.
+        disposeFrameTool(owner.panelTool);
+        disposeFrameTool(owner.fullTool);
+        owner.panelTool = owner.fullTool = undefined;
+        await openDocument(file, {}, undefined, owner);
+        toast(`Created ${name}`, {
+          label: 'Download',
+          onClick: () => saveBlob(blob, name),
+        });
+        return;
+      }
+      await openDocument(file);
       toast(`Opened ${name} in a new tab`, {
         label: 'Download',
         onClick: () => saveBlob(blob, name),
@@ -675,53 +719,51 @@ function saveBlob(blob: Blob, name: string) {
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
 
-function openToolTab(tool: AppTool, files: File[] = []) {
-  if (!tool.href) return;
-  noteToolUsed(tool.id);
-  const id = `tool-${++tabSeq}`;
-  const ft = createFrameTool(tool, files, id);
-  const view = $('#view-tool');
-  const wrap = h(
-    'div',
-    { class: 'tool-tab', dataset: { owner: id } },
-    h(
-      'div',
-      { class: 'tool-head' },
-      toolIcon(tool.icon, tool.color, 22),
-      h('h1', {}, tool.name),
-      h(
-        'button',
-        { type: 'button', class: 'pill-btn', onClick: () => closeTab(id) },
-        'Close'
-      )
-    ),
-    ft.el
-  );
-  ft.el.removeAttribute('data-owner');
-  view.append(wrap);
-  tabs.push({ kind: 'tool', id, name: tool.name, tool: ft });
-  activate(id);
-}
-
-/** Run a tool against the open document (side panel or full area) */
+/** "Create PDF from…" converters take other file types, never the open PDF */
 const isCreateTool = (tool: AppTool) =>
   !!catalogGroups
     .find((g) => g.name === 'Create a PDF')
     ?.tools.some((t) => t.id === tool.id);
 
-async function openToolOnDoc(tab: DocTab, tool: AppTool) {
-  // "Create PDF from…" converters take other file types, never the open PDF
-  if (isCreateTool(tool)) return openToolTab(tool);
-  noteToolUsed(tool.id);
-  if (tool.action) return runViewerAction(tab, tool);
-  if (!tool.href) return;
-  if (tab.loading) return toast('The document is still loading…');
+/** Tools that can start without a PDF (they pick their own files) */
+const STARTS_EMPTY = new Set([
+  'merge-pdf',
+  'alternate-merge',
+  'overlay-pdf',
+  'compare-pdfs',
+  'pdf-to-zip',
+  'pdf-workflow',
+  'form-creator',
+  'pdf-multi-tool',
+  'wasm-settings',
+]);
+const startsEmpty = (tool: AppTool) =>
+  isCreateTool(tool) || STARTS_EMPTY.has(tool.id);
 
-  const bytes = await viewer.exportBytes(tab.id);
-  const files = bytes
-    ? [new File([bytes], tab.name, { type: 'application/pdf' })]
-    : [];
+/** Ask for PDFs, open the first into the workspace, then run the tool on it */
+async function pickThenRun(tab: DocTab, tool: AppTool): Promise<boolean> {
+  const picked = await pickFiles();
+  if (!picked.length) return false;
+  const [first, ...rest] = picked;
+  await openDocument(
+    first.file,
+    { handle: first.handle, path: first.path },
+    undefined,
+    tab
+  );
+  for (const r of rest)
+    await openDocument(r.file, { handle: r.handle, path: r.path });
+  const target = tab.blank ? activeDoc() : tab;
+  if (target) {
+    activate(target.id);
+    await openToolOnDoc(target, tool);
+  }
+  return true;
+}
 
+/** Show a tool in a tab: options in the side panel, or the document area
+ *  for tools that need a full canvas (the tools sidebar stays put). */
+function mountTool(tab: DocTab, tool: AppTool, files: File[]) {
   if (tool.full) {
     disposeFrameTool(tab.fullTool);
     const ft = createFrameTool(tool, files, tab.id);
@@ -730,7 +772,7 @@ async function openToolOnDoc(tab: DocTab, tool: AppTool) {
       { class: 'full-head' },
       toolIcon(tool.icon, tool.color, 20),
       h('span', { class: 'fh-title' }, tool.name),
-      h('span', { class: 'fh-file' }, tab.name),
+      h('span', { class: 'fh-file' }, tab.blank ? '' : tab.name),
       h(
         'button',
         {
@@ -750,7 +792,61 @@ async function openToolOnDoc(tab: DocTab, tool: AppTool) {
     tab.panelTool.el.removeAttribute('data-owner');
     tab.panelOpen = true;
   }
+  if (tab.blank) tab.name = tool.name;
+  renderTabs();
   renderDocChrome(tab);
+}
+
+/** Run a tool in a tab. With a document open it works on that document;
+ *  in an empty workspace it either starts empty or asks for a PDF first. */
+async function openToolOnDoc(tab: DocTab, tool: AppTool, files: File[] = []) {
+  noteToolUsed(tool.id);
+  if (!tool.href && !tool.action) return;
+
+  if (tab.blank) {
+    if (tool.href && startsEmpty(tool)) return mountTool(tab, tool, files);
+    await pickThenRun(tab, tool);
+    return;
+  }
+  // Converters from other formats get their own workspace
+  if (isCreateTool(tool)) {
+    return void openToolOnDoc(newWorkspace(tool.name), tool, files);
+  }
+  if (tool.action) return runViewerAction(tab, tool);
+  if (tab.loading) return toast('The document is still loading…');
+
+  const bytes = await viewer.exportBytes(tab.id);
+  const docFiles = bytes
+    ? [new File([bytes], tab.name, { type: 'application/pdf' })]
+    : [];
+  mountTool(tab, tool, docFiles);
+}
+
+/** From Home, menus or the palette: use the open document, else a workspace */
+async function runTool(tool: AppTool) {
+  const current = activeTab();
+  if (current) {
+    await openToolOnDoc(current, tool);
+    return;
+  }
+  const ws = newWorkspace(tool.name);
+  await openToolOnDoc(ws, tool);
+  // Picker cancelled: don't leave an empty tab behind
+  if (ws.blank && !ws.panelTool && !ws.fullTool) closeTab(ws.id);
+}
+
+/** Open the searchable All tools sidebar (in a workspace if on Home) */
+function showToolsSidebar(query = '') {
+  const tab = activeTab() ?? newWorkspace('Tools');
+  disposeFrameTool(tab.panelTool);
+  tab.panelTool = undefined;
+  tab.panel = 'all';
+  tab.panelOpen = true;
+  tab.toolQuery = query;
+  renderDocChrome(tab);
+  const input = tab.panelEl.querySelector<HTMLInputElement>('.lp-search input');
+  input?.focus();
+  input?.select();
 }
 
 function closeFullTool(tab: DocTab) {
@@ -835,75 +931,150 @@ function renderLeftPanel(tab: DocTab) {
     })
   );
   const body = h('div', { class: 'lp-body' });
-  const lists = panelGroups(tab.panel);
+  const list = h('div', { class: 'lp-list' });
   if (tab.panel === 'all') {
-    const prefs = getPrefs();
-    const pick = (ids: string[]) =>
-      ids.map((id) => getTool(id)).filter((t): t is AppTool => !!t);
-    const pinned = pick(prefs.pinnedTools);
-    const recentUsed = pick(prefs.recentTools).filter(
-      (t) => !prefs.pinnedTools.includes(t.id)
-    );
-    if (recentUsed.length)
-      lists.unshift({ name: 'Recently used', tools: recentUsed.slice(0, 3) });
-    if (pinned.length) lists.unshift({ name: 'Pinned', tools: pinned });
+    const search = h('input', {
+      type: 'search',
+      placeholder: 'Find a tool',
+      value: tab.toolQuery,
+      'aria-label': 'Find a tool',
+    });
+    search.addEventListener('input', () => {
+      tab.toolQuery = search.value;
+      renderToolList(tab, list);
+    });
+    search.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter')
+        list.querySelector<HTMLButtonElement>('.lp-tool')?.click();
+      if (e.key === 'Escape' && search.value) {
+        e.stopPropagation();
+        search.value = '';
+        tab.toolQuery = '';
+        renderToolList(tab, list);
+      }
+    });
+    body.append(h('label', { class: 'lp-search' }, icon('search', 16), search));
   }
-  for (const g of lists) {
-    if (lists.length > 1) body.append(h('div', { class: 'lp-group' }, g.name));
-    for (const tool of g.tools) {
-      const isPinned = getPrefs().pinnedTools.includes(tool.id);
-      const pin = h(
-        'span',
-        {
-          class: `lp-pin${isPinned ? ' is-on' : ''}`,
-          role: 'button',
-          tabindex: '-1',
-          title: isPinned ? 'Unpin' : 'Pin to top',
-          'aria-label': isPinned ? 'Unpin' : 'Pin to top',
-          onClick: (e: MouseEvent) => {
-            e.stopPropagation();
-            const on = togglePinned(tool.id);
-            toast(on ? `Pinned ${tool.name}` : `Unpinned ${tool.name}`);
-            renderLeftPanel(tab);
-          },
-        },
-        icon('pin', 14)
-      );
-      body.append(
-        h(
-          'button',
-          {
-            type: 'button',
-            class: 'lp-tool',
-            title: tool.desc,
-            onClick: () => {
-              if (tab.panel === 'all' && tool.id === 'pdf-to-docx') {
-                tab.panel = 'convert';
-                return renderDocChrome(tab);
-              }
-              if (tab.panel === 'all' && tool.id === 'image-to-pdf') {
-                return openToolTab(tool);
-              }
-              void openToolOnDoc(tab, tool);
-            },
-          },
-          toolIcon(tool.icon, tool.color, 20),
-          h('span', {}, tool.name),
-          pin
-        )
-      );
+  body.append(list);
+  renderToolList(tab, list);
+  el.replaceChildren(head, body);
+}
+
+/** Sidebar groups that are expanded (shared by all tabs) */
+const openToolGroups = new Set<string>(['Popular']);
+
+function toolRow(tab: DocTab, tool: AppTool, redraw: () => void) {
+  const isPinned = getPrefs().pinnedTools.includes(tool.id);
+  const pin = h(
+    'span',
+    {
+      class: `lp-pin${isPinned ? ' is-on' : ''}`,
+      role: 'button',
+      tabindex: '-1',
+      title: isPinned ? 'Unpin' : 'Pin to top',
+      'aria-label': isPinned ? 'Unpin' : 'Pin to top',
+      onClick: (e: MouseEvent) => {
+        e.stopPropagation();
+        const on = togglePinned(tool.id);
+        toast(on ? `Pinned ${tool.name}` : `Unpinned ${tool.name}`);
+        redraw();
+      },
+    },
+    icon('pin', 14)
+  );
+  return h(
+    'button',
+    {
+      type: 'button',
+      class: 'lp-tool',
+      title: tool.desc,
+      onClick: () => {
+        // "Export a PDF" lists every export format, like Acrobat
+        if (
+          tab.panel === 'all' &&
+          tool.id === 'pdf-to-docx' &&
+          tool.name === 'Export a PDF' &&
+          !tab.blank
+        ) {
+          tab.panel = 'convert';
+          return renderDocChrome(tab);
+        }
+        void openToolOnDoc(tab, tool);
+      },
+    },
+    toolIcon(tool.icon, tool.color, 20),
+    h('span', {}, tool.name),
+    pin
+  );
+}
+
+function renderToolList(tab: DocTab, list: HTMLElement) {
+  const redraw = () => renderToolList(tab, list);
+  const q = tab.toolQuery.trim();
+  const out: Node[] = [];
+
+  if (tab.panel !== 'all') {
+    const lists = panelGroups(tab.panel);
+    for (const g of lists) {
+      if (lists.length > 1) out.push(h('div', { class: 'lp-group' }, g.name));
+      g.tools.forEach((t) => out.push(toolRow(tab, t, redraw)));
     }
+    list.replaceChildren(...out);
+    return;
   }
-  if (tab.panel === 'all') {
-    body.append(
+
+  if (q) {
+    const results = searchTools(q);
+    results.forEach((t) => out.push(toolRow(tab, t, redraw)));
+    if (!results.length)
+      out.push(h('div', { class: 'lp-empty' }, `No tools match “${q}”`));
+    list.replaceChildren(...out);
+    return;
+  }
+
+  const prefs = getPrefs();
+  const pick = (ids: string[]) =>
+    ids.map((id) => getTool(id)).filter((t): t is AppTool => !!t);
+  const pinned = pick(prefs.pinnedTools);
+  const recentUsed = pick(prefs.recentTools)
+    .filter((t) => !prefs.pinnedTools.includes(t.id))
+    .slice(0, 3);
+  const flat = (name: string, tools: AppTool[]) => {
+    if (!tools.length) return;
+    out.push(h('div', { class: 'lp-group' }, name));
+    tools.forEach((t) => out.push(toolRow(tab, t, redraw)));
+  };
+  flat('Pinned', pinned);
+  flat('Recently used', recentUsed);
+
+  const sections: ToolGroup[] = [
+    { name: 'Popular', tools: quickTools() },
+    ...catalogGroups,
+    ...signTools(),
+  ];
+  for (const g of sections) {
+    const open = openToolGroups.has(g.name);
+    out.push(
       h(
         'button',
-        { type: 'button', class: 'lp-more', onClick: openAllTools },
-        'View more'
+        {
+          type: 'button',
+          class: `lp-section${open ? ' is-open' : ''}`,
+          'aria-expanded': String(open),
+          onClick: () => {
+            if (open) openToolGroups.delete(g.name);
+            else openToolGroups.add(g.name);
+            redraw();
+          },
+        },
+        icon('chevronRight', 14),
+        h('span', {}, g.name),
+        h('span', { class: 'lp-count' }, String(g.tools.length))
       )
     );
+    if (open) g.tools.forEach((t) => out.push(toolRow(tab, t, redraw)));
   }
-  el.replaceChildren(head, body);
+  list.replaceChildren(...out);
 }
 
 function renderDocChrome(tab: DocTab) {
@@ -919,6 +1090,11 @@ function renderDocChrome(tab: DocTab) {
   renderLeftPanel(tab);
   $('#doc-stage').classList.toggle('has-full-tool', !!tab.fullTool);
   $('#doc-stage').classList.toggle('is-loading', tab.loading);
+  $('#doc-stage').classList.toggle('is-blank', tab.blank);
+  $('#view-doc').classList.toggle('is-workspace', tab.blank);
+  for (const id of ['#save-btn', '#print-btn', '#download-btn']) {
+    $<HTMLButtonElement>(id).disabled = tab.blank;
+  }
   renderQuickbar(tab);
   renderRightRail(tab);
 }
@@ -927,7 +1103,7 @@ $('#gb-tabs').addEventListener('click', (e) => {
   const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(
     'button[data-panel]'
   );
-  const tab = activeDoc();
+  const tab = activeTab();
   if (!btn || !tab) return;
   const kind = btn.dataset.panel as PanelKind;
   if (tab.panelOpen && tab.panel === kind && !tab.panelTool) {
@@ -1329,106 +1505,6 @@ $('#find-btn').addEventListener('click', (e) =>
   openPalette(e.currentTarget as HTMLElement)
 );
 
-/** Open a tool on the current document if there is one, else in its own tab */
-function runTool(tool: AppTool) {
-  const doc =
-    activeDoc() ??
-    (lastDocId ? (tabs.find((t) => t.id === lastDocId) as DocTab) : undefined);
-  if (
-    doc &&
-    (tool.action ||
-      !catalogGroups
-        .find((g) => g.name === 'Create a PDF')
-        ?.tools.includes(tool))
-  ) {
-    activate(doc.id);
-    void openToolOnDoc(doc, tool);
-  } else if (tool.action) {
-    toast('Open a PDF first to use this tool');
-  } else {
-    openToolTab(tool);
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/* All tools view                                                      */
-/* ------------------------------------------------------------------ */
-
-function openAllTools() {
-  if (!tabs.find((t) => t.id === 'alltools')) {
-    tabs.push({ kind: 'alltools', id: 'alltools', name: 'All tools' });
-  }
-  activate('alltools');
-}
-
-function renderAllTools() {
-  const q = $<HTMLInputElement>('#alltools-search').value.trim();
-  const container = $('#alltools-groups');
-  const groups: ToolGroup[] = q
-    ? [{ name: 'Results', tools: searchTools(q) }]
-    : allToolGroups();
-  container.replaceChildren(
-    ...groups
-      .filter((g) => g.tools.length)
-      .map((g) =>
-        h(
-          'section',
-          { class: 'at-group' },
-          h('h2', {}, g.name),
-          h(
-            'div',
-            { class: 'at-grid' },
-            ...g.tools.map((t) => {
-              const more = iconBtn(
-                'more',
-                'More options',
-                () =>
-                  showMenu(more, [
-                    { label: 'Open', onClick: () => runTool(t) },
-                    ...(t.href
-                      ? [
-                          {
-                            label: 'Open in a new tab',
-                            onClick: () => openToolTab(t),
-                          },
-                        ]
-                      : []),
-                  ]),
-                'sq-btn'
-              );
-              return h(
-                'div',
-                { class: 'at-item', title: t.desc },
-                toolIcon(t.icon, t.color, 40),
-                h('div', { class: 'at-name' }, t.name),
-                h(
-                  'div',
-                  { class: 'at-actions' },
-                  h(
-                    'button',
-                    {
-                      type: 'button',
-                      class: 'sm-btn',
-                      onClick: () => runTool(t),
-                    },
-                    'Open'
-                  ),
-                  more
-                )
-              );
-            })
-          )
-        )
-      )
-  );
-  if (q && !groups[0].tools.length) {
-    container.append(h('p', { class: 'at-empty' }, `No tools match “${q}”.`));
-  }
-}
-
-$('#alltools-search').addEventListener('input', renderAllTools);
-$('#alltools-close').addEventListener('click', () => closeTab('alltools'));
-
 /* ------------------------------------------------------------------ */
 /* Home view                                                           */
 /* ------------------------------------------------------------------ */
@@ -1441,7 +1517,11 @@ function renderRecommended() {
     ...recommendedTools().map((t) =>
       h(
         'button',
-        { type: 'button', class: 'rec-card', onClick: () => runTool(t) },
+        {
+          type: 'button',
+          class: 'rec-card',
+          onClick: (): void => void runTool(t),
+        },
         h(
           'span',
           { class: 'rec-ic', style: `--c:${t.color}` },
@@ -1579,8 +1659,9 @@ document.querySelectorAll<HTMLButtonElement>('[data-layout]').forEach((b) =>
 );
 $('#home-search').addEventListener('input', () => void refreshRecent());
 $('#home-select').addEventListener('click', openFromDialog);
+$('#doc-empty-open').addEventListener('click', openFromDialog);
 $('#open-computer').addEventListener('click', openFromDialog);
-$('#see-all-tools').addEventListener('click', openAllTools);
+$('#see-all-tools').addEventListener('click', () => showToolsSidebar());
 
 /* ------------------------------------------------------------------ */
 /* Title bar menus                                                     */
@@ -1611,18 +1692,13 @@ function createMenuItems(): MenuItem[] {
       return {
         label: labels[id],
         icon: toolIcon(t.icon, t.color, 18),
-        onClick: () => openToolTab(t),
+        onClick: (): void => void runTool(t),
       };
     }),
     { divider: true },
     {
       label: 'More formats…',
-      onClick: () => {
-        openAllTools();
-        const input = $<HTMLInputElement>('#alltools-search');
-        input.value = 'to PDF';
-        renderAllTools();
-      },
+      onClick: () => showToolsSidebar('to PDF'),
     },
   ];
 }
@@ -1724,7 +1800,11 @@ $('#menu-btn').addEventListener('click', (e) => {
       icon: icon('theme', 16),
       onClick: () => showThemeMenu($('#menu-btn')),
     },
-    { label: 'All tools', icon: icon('grid', 16), onClick: openAllTools },
+    {
+      label: 'All tools',
+      icon: icon('grid', 16),
+      onClick: () => showToolsSidebar(),
+    },
     { label: 'About Paperwing', onClick: showAbout },
   ]);
 });
@@ -2192,6 +2272,32 @@ function showPreferences() {
         h('span', {}, h('b', {}, 'Theme')),
         themeSelect
       ),
+      h('div', { class: 'pref-group' }, 'Documents'),
+      (() => {
+        const sel = h(
+          'select',
+          { class: 'pref-select', 'aria-label': 'Default zoom' },
+          h('option', { value: 'automatic' }, 'Automatic'),
+          h('option', { value: 'fit-width' }, 'Fit width'),
+          h('option', { value: 'fit-page' }, 'Fit page'),
+          h('option', { value: '100' }, '100%')
+        );
+        sel.value = getPrefs().defaultZoom;
+        sel.addEventListener('change', () =>
+          setPrefs({ defaultZoom: sel.value as Prefs['defaultZoom'] })
+        );
+        return h(
+          'label',
+          { class: 'pref-row' },
+          h(
+            'span',
+            {},
+            h('b', {}, 'Default zoom'),
+            h('small', {}, 'How new documents open.')
+          ),
+          sel
+        );
+      })(),
       h('div', { class: 'pref-group' }, 'Keyboard'),
       toggle(
         'Single-key accelerators',
@@ -2233,7 +2339,7 @@ function showPreferences() {
             class: 'pill-btn',
             onClick: () => {
               document.querySelector('.dlg-backdrop')?.remove();
-              openToolTab({
+              void runTool({
                 id: 'wasm-settings',
                 name: 'Engine settings',
                 icon: 'gear-six',
@@ -2352,7 +2458,13 @@ function openPalette(anchor?: HTMLElement) {
     if (tools.length) {
       out.push(h('div', { class: 'find-head' }, 'Tools'));
       tools.forEach((t) =>
-        out.push(row(t.name, toolIcon(t.icon, t.color, 18), () => runTool(t)))
+        out.push(
+          row(
+            t.name,
+            toolIcon(t.icon, t.color, 18),
+            (): void => void runTool(t)
+          )
+        )
       );
     }
     const cmds = paletteCommands().filter(
@@ -2679,12 +2791,14 @@ window.addEventListener('drop', async (e) => {
   );
   const files = Array.from(e.dataTransfer!.files);
   const pdfs = files.filter(isPdf);
+  let into = activeTab()?.blank ? activeTab() : undefined;
   for (const f of pdfs) {
     const handle = handles.find(
       (hd): hd is FileSystemFileHandle =>
         hd?.kind === 'file' && hd.name === f.name
     );
-    await openDocument(f, { handle });
+    await openDocument(f, { handle }, undefined, into);
+    into = undefined;
   }
   const others = files.filter((f) => !isPdf(f));
   if (others.length) await openFiles(others);
@@ -2731,7 +2845,6 @@ declare const __PAPERWING_REPO__: string;
 
 hydrateIcons();
 renderRecommended();
-renderAllTools();
 activate('home');
 void restoreSession();
 
@@ -2741,7 +2854,7 @@ void restoreSession();
   const splash = document.getElementById('splash');
   const version = document.getElementById('sp-version');
   if (version) version.textContent = `Version ${__PAPERWING_VERSION__}`;
-  const wait = Math.max(0, 450 - performance.now());
+  const wait = Math.max(0, 900 - performance.now());
   setTimeout(() => {
     splash?.classList.add('is-done');
     setTimeout(() => splash?.remove(), 300);

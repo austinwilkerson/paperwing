@@ -1649,3 +1649,111 @@ body.is-reading #right-rail {
 body.is-reading #views {
   border-top: 0;
 }
+
+/* ------------------------------------------------------------------ */
+/* Searchable tools sidebar & empty workspace                          */
+/* ------------------------------------------------------------------ */
+
+.lp-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0 4px 8px;
+  color: var(--text-3);
+}
+.lp-search .ic {
+  position: absolute;
+  left: 10px;
+  pointer-events: none;
+}
+.lp-search input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px 0 32px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+}
+.lp-search input:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.lp-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 34px;
+  margin-top: 4px;
+  padding: 4px 10px 4px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  text-align: left;
+}
+.lp-section:hover {
+  background: var(--hover-soft);
+}
+.lp-section .ic {
+  color: var(--text-3);
+  transition: transform 0.15s ease;
+}
+.lp-section.is-open .ic {
+  transform: rotate(90deg);
+}
+.lp-section span:first-of-type {
+  flex: 1;
+}
+.lp-count {
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+.lp-empty {
+  padding: 12px 10px;
+  color: var(--text-3);
+  font-size: 14px;
+}
+
+#doc-empty {
+  position: absolute;
+  inset: 0;
+  display: none;
+  place-items: center;
+  padding: 24px;
+}
+#doc-stage.is-blank #doc-empty {
+  display: grid;
+}
+#doc-stage.is-blank #viewer-host,
+#doc-stage.is-blank #quickbar {
+  visibility: hidden;
+}
+#doc-stage.is-blank.has-full-tool #doc-empty {
+  display: none;
+}
+.de-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: 420px;
+  padding: 36px 32px;
+  border: 2px dashed var(--border-strong);
+  border-radius: 12px;
+  text-align: center;
+}
+.de-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+.de-sub {
+  margin-bottom: 8px;
+  color: var(--text-3);
+}
+#view-doc.is-workspace #right-rail {
+  visibility: hidden;
+}

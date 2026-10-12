@@ -11,6 +11,8 @@ export interface Prefs {
   pinnedTools: string[];
   /** Most recently used tool ids, newest first */
   recentTools: string[];
+  /** Zoom new documents open at */
+  defaultZoom: 'automatic' | 'fit-width' | 'fit-page' | '100';
   /** Where the floating quick toolbar was left */
   quickbarPos: { x: number; y: number } | null;
 }
@@ -24,6 +26,7 @@ const DEFAULTS: Prefs = {
   pinnedTools: [],
   recentTools: [],
   quickbarPos: null,
+  defaultZoom: 'automatic',
 };
 
 let cache: Prefs | null = null;

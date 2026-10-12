@@ -278,18 +278,28 @@ describe('Paperwing UI', () => {
     assert.equal(names[1], 'Report (1).pdf');
   });
 
-  test('All tools view searches every tool', async () => {
-    await page.evaluate(() => document.querySelector('.lp-more')?.click());
-    await waitFor(page, () =>
-      document.querySelector('#view-alltools.is-active')
+  test('the tools sidebar searches every tool', async () => {
+    // (switching away and back guarantees the All tools list is showing)
+    await page.evaluate(() =>
+      document.querySelector('#gb-tabs [data-panel="edit"]').click()
     );
-    await page.type('#alltools-search', 'watermark');
-    const names = await page.$$eval('#alltools-groups .at-name', (e) =>
-      e.map((x) => x.textContent)
+    await page.evaluate(() =>
+      document.querySelector('#gb-tabs [data-panel="all"]').click()
+    );
+    await page.waitForSelector('.lp:not([hidden]) .lp-search input');
+    await page.type('.lp:not([hidden]) .lp-search input', 'watermark');
+    const names = await page.$$eval(
+      '.lp:not([hidden]) .lp-tool span:not(.lp-pin)',
+      (e) => e.map((x) => x.textContent)
     );
     assert.ok(
       names.some((n) => /watermark/i.test(n)),
       names.join(', ')
+    );
+    assert.equal(
+      await page.$('#view-alltools'),
+      null,
+      'no separate All tools page'
     );
   });
 
@@ -330,25 +340,44 @@ describe('Paperwing UI', () => {
     );
   });
 
-  test('"Create PDF from" converters open in their own tab without the open PDF', async () => {
+  test('converters open in a workspace tab with the tool in the sidebar', async () => {
     await dropPdf('Report.pdf');
     await page.evaluate(() =>
       document.querySelector('#gb-tabs [data-panel="convert"]').click()
     );
     await page.evaluate(() =>
-      [...document.querySelectorAll('.lp-tool')]
+      [...document.querySelectorAll('.lp:not([hidden]) .lp-tool')]
         .find((b) => b.textContent.trim() === 'Word to PDF')
         .click()
     );
-    await waitFor(page, () => document.querySelector('#view-tool.is-active'));
+    await waitFor(page, () => document.querySelector('#doc-stage.is-blank'));
     const name = await page.$eval(
       '#tabs .tab.is-active .tab-label',
       (e) => e.textContent
     );
     assert.equal(name, 'Word to PDF');
+    assert.ok(
+      await page.$('#left-panel .lp:not([hidden]) iframe'),
+      'tool shown in the sidebar'
+    );
+  });
+
+  test('"See all tools" on Home opens the searchable sidebar, not a page', async () => {
+    await page.click('#home-btn');
+    await page.click('#see-all-tools');
+    await waitFor(page, () => document.activeElement?.closest?.('.lp-search'));
+    const active = await page.$eval(
+      '#tabs .tab.is-active .tab-label',
+      (e) => e.textContent
+    );
+    assert.equal(active, 'Tools');
+    assert.ok(await page.$('#doc-stage.is-blank'));
   });
 
   test('tool pages adopt the theme and hide their own chrome when embedded', async () => {
+    // Fresh page so state from earlier tests can't interfere
+    await page.close();
+    page = await browser.newPage();
     await page.emulateMediaFeatures([
       { name: 'prefers-color-scheme', value: 'dark' },
     ]);

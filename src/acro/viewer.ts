@@ -6,6 +6,13 @@
 import type { EmbedPdfContainer, PluginRegistry } from 'bentopdf-viewer';
 import { editorFontFallback } from '../js/config/editor-fonts.js';
 import { getThemePref, onThemeChange } from '../reskin/theme';
+import { getPrefs } from './prefs';
+
+/** Zoom level for the viewer from the "Default zoom" preference */
+const zoomLevel = () => {
+  const z = getPrefs().defaultZoom;
+  return z === '100' ? 1 : z;
+};
 
 /** Acrobat-like neutral greys for both themes */
 function viewerTheme() {
@@ -110,6 +117,10 @@ export class Viewer {
         tabBar: 'never',
         documentManager: { maxDocuments: 50 },
         theme: viewerTheme(),
+        zoom: {
+          defaultZoomLevel:
+            zoomLevel() === 'automatic' ? 'fit-width' : zoomLevel(),
+        },
       } as any) as EmbedPdfContainer;
       this.registry = await (this.container as any).registry;
       onThemeChange(() => (this.container as any)?.setTheme?.(viewerTheme()));
@@ -198,6 +209,32 @@ export class Viewer {
     return this.init();
   }
 
+  /** "Automatic" = fit the page width, but never above 150% (big screens) */
+  applyDefaultZoom(tabId: string) {
+    const id = this.docIds.get(tabId);
+    if (!id) return;
+    let level: number | string = zoomLevel();
+    if (level === 'automatic') {
+      const info = this.docInfo(tabId);
+      const width = this.host.clientWidth - 96; // breathing room either side
+      level =
+        info?.width && width > 0
+          ? Math.min(width / info.width, 1.5)
+          : 'fit-width';
+    }
+    this.cap('zoom').forDocument(id).requestZoom(level);
+    // Zooming keeps the centre in place; new documents should start at the top
+    setTimeout(() => {
+      try {
+        this.cap('scroll')
+          .forDocument(id)
+          .scrollToPage({ pageNumber: 1, behavior: 'instant' });
+      } catch {
+        /* document closed meanwhile */
+      }
+    }, 120);
+  }
+
   /** Fires after every undoable edit in a document */
   onChange(fn: (tabId: string) => void): Unsub {
     this.changeListeners.add(fn);
@@ -247,6 +284,8 @@ export class Viewer {
       autoActivate: true,
     });
     await opened;
+    // Apply the preferred zoom once the first page is laid out
+    setTimeout(() => this.applyDefaultZoom(tabId), 60);
   }
 
   async activate(tabId: string) {

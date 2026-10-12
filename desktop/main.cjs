@@ -225,7 +225,8 @@ function createWindow() {
     height: 900,
     minWidth: 960,
     minHeight: 620,
-    show: false,
+    // Show straight away so the launch screen is visible while the app loads
+    show: true,
     title: 'Paperwing',
     backgroundColor: chromeColors().color,
     titleBarStyle: 'hidden',
@@ -244,7 +245,6 @@ function createWindow() {
     },
   });
 
-  mainWindow.once('ready-to-show', () => mainWindow.show());
   // Let the app ask about unsaved documents before the window closes
   mainWindow.on('close', (e) => {
     if (allowClose || !rendererReady) return;

@@ -48,7 +48,9 @@ monthly bill. Every feature is free, and your files never leave your computer.
 
 **A complete PDF workspace**
 
-- Tabbed documents, a Home view with recent and starred files, and an **All tools** view with search
+- Tabbed documents and a Home view with recent and starred files
+- A searchable **All tools** sidebar: every tool, grouped like Acrobat's, with pinned and recently used tools on top
+- Every tool opens right beside your document — no separate tool pages
 - Floating quick-action toolbar: select, comment, highlight, draw, text box, sign, shapes, stamps
 - Right rail with comments, bookmarks, page thumbnails, find, page navigation, rotate and zoom
 - **Light and dark themes** that follow your system automatically (neutral, Acrobat-style dark mode)
@@ -97,7 +99,7 @@ you open it. See **[Installation](docs/INSTALL.md)** for the one-time steps.
     <td width="50%"><img src="docs/screenshots/dark.png" alt="Document view in dark mode with the Edit panel" /><br /><sub><b>Dark mode</b> — follows your system automatically</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/all-tools.png" alt="All tools view" /><br /><sub><b>All tools</b> — every tool, searchable</sub></td>
+    <td><img src="docs/screenshots/all-tools.png" alt="Searchable All tools sidebar" /><br /><sub><b>All tools sidebar</b> — search and browse every tool</sub></td>
     <td><img src="docs/screenshots/tool-panel.png" alt="Compress tool running in the side panel next to the document" /><br /><sub><b>Tools on the open document</b> — results open in a new tab</sub></td>
   </tr>
   <tr>

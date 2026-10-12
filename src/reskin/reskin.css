@@ -946,3 +946,16 @@ html.rs-embedded h1[data-i18n^='tools:'],
 html.rs-embedded h1[data-i18n^='tools:'] + p {
   display: none;
 }
+
+/* In the document area the open PDF is already loaded: drop the upload box
+   and file card so the tool's editor gets the space */
+html.rs-full.rs-has-doc
+  :is(#drop-zone, #file-display-area, #file-controls, #upload-area) {
+  display: none !important;
+}
+html.rs-full.rs-has-doc #uploader {
+  padding-top: 12px;
+}
+html.rs-full #tool-uploader {
+  max-width: none;
+}

@@ -30,6 +30,12 @@ const embedded = window.self !== window.top;
 
 if (embedded) {
   document.documentElement.classList.add('rs-embedded');
+  // The shell says whether this tool sits in the side panel or the
+  // document area (?embed=panel|full)
+  const mode = new URLSearchParams(location.search).get('embed');
+  if (mode === 'full' || mode === 'panel') {
+    document.documentElement.classList.add(`rs-${mode}`);
+  }
 
   // downloadFile() and friends revoke the object URL right after click(), so
   // remember which blob each URL points to.
