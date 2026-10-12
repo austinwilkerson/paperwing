@@ -5,7 +5,7 @@
  */
 import { categories } from '../js/config/tools';
 
-export type ViewerAction = 'comment' | 'redact' | 'find';
+export type ViewerAction = 'comment' | 'redact';
 
 export interface AppTool {
   id: string;
@@ -242,7 +242,7 @@ export const recommendedTools = (): AppTool[] => [
   alias('pdf-to-docx', 'Export a PDF', 'Convert a PDF to Word.'),
 ];
 
-/** Groups for the "All tools" view: Acrobat's sections, then everything else */
+/** Every tool, Acrobat's sections first: the order tool search ranks results in */
 export const allToolGroups = (): ToolGroup[] => [
   {
     name: 'Edit',

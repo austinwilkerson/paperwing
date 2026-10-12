@@ -63,6 +63,9 @@ async function waitFor(page, fn, arg, timeout = 15000) {
 let browser;
 let page;
 const pdfBase64 = readFileSync(SAMPLE).toString('base64');
+const protectedBase64 = readFileSync(
+  resolve(dirname(SAMPLE), 'protected.pdf') // password: secret
+).toString('base64');
 
 async function openApp(scheme = 'light') {
   await page.emulateMediaFeatures([
@@ -70,6 +73,25 @@ async function openApp(scheme = 'light') {
   ]);
   await page.goto(`${BASE}/app.html`, { waitUntil: 'domcontentloaded' });
   await waitFor(page, () => !document.getElementById('splash'));
+}
+
+/** Drop a PDF onto the window like a user would, without waiting for it */
+async function dropBytes(name, b64) {
+  await page.evaluate(
+    async ({ b64, name }) => {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const dt = new DataTransfer();
+      dt.items.add(new File([bytes], name, { type: 'application/pdf' }));
+      window.dispatchEvent(
+        new DragEvent('drop', {
+          dataTransfer: dt,
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    },
+    { b64, name }
+  );
 }
 
 /** Drop a PDF onto the window like a user would */
@@ -402,6 +424,51 @@ describe('Paperwing UI', () => {
     assert.ok(
       r < 60 && Math.abs(r - b) <= 4,
       `dark neutral background: ${state.bg}`
+    );
+  });
+  test('asks for the password of a protected PDF', async () => {
+    // Start without the documents earlier tests left in the session
+    await page.evaluate(() => localStorage.removeItem('paperwing:session'));
+    await openApp();
+    const prompt = () =>
+      waitFor(page, () =>
+        document.querySelector('.dlg[aria-label="Password"] .dlg-input')
+      );
+    const answer = async (text) => {
+      await page.$eval('.dlg-input', (el) => el.focus());
+      await page.keyboard.type(text);
+      await page.keyboard.press('Enter');
+    };
+
+    // Wrong password, then the right one
+    await dropBytes('Locked.pdf', protectedBase64);
+    await prompt();
+    await answer('nope');
+    await waitFor(page, () =>
+      document.querySelector('.dlg-body p')?.textContent?.includes('incorrect')
+    );
+    await answer('secret');
+    await waitFor(
+      page,
+      () =>
+        !document.querySelector('.dlg-backdrop') &&
+        !document.querySelector('#doc-stage.is-loading') &&
+        document.querySelector('#right-rail .rr-total')?.textContent === '1'
+    );
+    assert.deepEqual(await tabNames(), ['Locked.pdf']);
+
+    // Cancelling closes the tab quietly
+    await dropBytes('Locked again.pdf', protectedBase64);
+    await prompt();
+    await page.keyboard.press('Escape');
+    await waitFor(page, () => !document.querySelector('.dlg-backdrop'));
+    await sleep(300);
+    assert.deepEqual(await tabNames(), ['Locked.pdf']);
+    assert.equal(
+      await page.$$eval('#toasts .toast', (t) =>
+        t.some((el) => el.textContent.includes("Couldn't open"))
+      ),
+      false
     );
   });
 });

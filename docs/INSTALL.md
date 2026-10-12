@@ -12,8 +12,8 @@ Download the file for your computer from the
 
 ## Windows
 
-Windows 10 or 11, 64-bit. There are three versions. They all have the same features, so pick
-whichever suits you.
+Windows 10 or 11, 64-bit. There are two versions with the same features: an installer, and a
+portable version that runs without installing.
 
 ### Installer (recommended)
 

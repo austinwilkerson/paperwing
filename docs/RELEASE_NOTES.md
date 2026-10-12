@@ -9,7 +9,7 @@ account, no subscription.
 
 - **Familiar workspace** — tabs, Home, a searchable All tools sidebar, Edit / Convert / E-Sign panels, floating quick
   toolbar and a navigation rail with thumbnails, comments, bookmarks and find
-- **120+ tools** — edit text & images, annotate, redact, fill & sign, convert to and from Office and
+- **100+ tools** — edit text & images, annotate, redact, fill & sign, convert to and from Office and
   image formats, combine, split, organize, compress, OCR, protect, compare and more
 - **Light & dark themes** that follow your system
 - **Acrobat keyboard shortcuts**, including single-key tool accelerators

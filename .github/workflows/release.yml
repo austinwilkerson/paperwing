@@ -92,8 +92,22 @@ jobs:
         run: |
           TAG=$(node desktop/scripts/engine-info.mjs --tag)
           echo "Engine release: $TAG"
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG"             --prerelease --target "$GITHUB_SHA"             --title "Engine files ($TAG)"             --notes "Downloaded automatically by Paperwing the first time you convert a Word, Excel or PowerPoint file. You don't need to download anything here."
-          gh release upload "$TAG" --clobber             public/libreoffice-wasm/soffice.wasm.gz             public/libreoffice-wasm/soffice.data.gz
+          FILES="public/libreoffice-wasm/soffice.wasm.gz public/libreoffice-wasm/soffice.data.gz"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --prerelease --target "$GITHUB_SHA" \
+              --title "Engine files ($TAG)" \
+              --notes "Downloaded automatically by Paperwing the first time you convert a Word, Excel or PowerPoint file. You don't need to download anything here."
+          fi
+          # Upload only what's missing: re-uploading would briefly remove a
+          # file that installed apps may be downloading
+          HAVE=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+          for f in $FILES; do
+            if echo "$HAVE" | grep -qx "$(basename "$f")"; then
+              echo "Already published: $(basename "$f")"
+            else
+              gh release upload "$TAG" "$f"
+            fi
+          done
 
   release:
     name: Create draft release

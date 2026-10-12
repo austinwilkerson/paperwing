@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   findShortcut,
   formatCombo,
+  keysFor,
   matchesCombo,
   SHORTCUTS,
   type KeyInput,
@@ -113,8 +114,29 @@ describe('keymap', () => {
   it('has no duplicate shortcut ids or conflicting combos', () => {
     const ids = SHORTCUTS.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
-    const combos = SHORTCUTS.flatMap((s) => s.keys);
-    expect(new Set(combos).size).toBe(combos.length);
+    for (const mac of [false, true]) {
+      const combos = SHORTCUTS.flatMap((s) => keysFor(s, mac));
+      expect(new Set(combos).size).toBe(combos.length);
+    }
+  });
+
+  it('moves Read mode off ⌘H (Hide) on macOS', () => {
+    const readMode = SHORTCUTS.find((s) => s.id === 'readMode')!;
+    expect(keysFor(readMode, false)).toEqual(['Ctrl+H']);
+    expect(keysFor(readMode, true)).toEqual(['Shift+Ctrl+H']);
+    const h = { key: 'h', code: 'KeyH' };
+    expect(findShortcut(key({ ...h, ctrlKey: true }), false, true)?.id).toBe(
+      'readMode'
+    );
+    expect(
+      findShortcut(key({ ...h, metaKey: true }), true, true)
+    ).toBeUndefined();
+    expect(
+      findShortcut(key({ ...h, metaKey: true, shiftKey: true }), true, true)?.id
+    ).toBe('readMode');
+    // Shortcuts without a macOS override use the same combos everywhere
+    const save = SHORTCUTS.find((s) => s.id === 'save')!;
+    expect(keysFor(save, true)).toBe(save.keys);
   });
 
   it('formats combos per platform', () => {

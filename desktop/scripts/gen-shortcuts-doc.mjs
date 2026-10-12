@@ -6,7 +6,7 @@
 import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SHORTCUTS, formatCombo } from '../../src/acro/keymap.ts';
+import { SHORTCUTS, formatCombo, keysFor } from '../../src/acro/keymap.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const kbd = (combo, mac) => `<kbd>${formatCombo(combo, mac)}</kbd>`;
@@ -27,9 +27,11 @@ const groups = [...new Set(SHORTCUTS.map((s) => s.group))];
 for (const g of groups) {
   md += `## ${g}\n\n| Action | Windows | macOS |\n|---|---|---|\n`;
   for (const s of SHORTCUTS.filter((x) => x.group === g)) {
-    md += `| ${s.label} | ${s.keys.map((k) => kbd(k, false)).join(' or ')} | ${s.keys
-      .map((k) => kbd(k, true))
-      .join(' or ')} |\n`;
+    const keys = (mac) =>
+      keysFor(s, mac)
+        .map((k) => kbd(k, mac))
+        .join(' or ');
+    md += `| ${s.label} | ${keys(false)} | ${keys(true)} |\n`;
   }
   md += '\n';
 }

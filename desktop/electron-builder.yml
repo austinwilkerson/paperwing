@@ -74,13 +74,12 @@ mac:
   target:
     - target: dmg
       arch: [arm64, x64]
-    - target: zip
-      arch: [arm64, x64]
   # Ad-hoc signed (no Apple Developer ID). Set CSC_LINK/CSC_KEY_PASSWORD and
   # replace identity to ship a notarised build.
   identity: '-'
   hardenedRuntime: false
   gatekeeperAssess: false
+  # Take effect once hardenedRuntime is enabled for a signed, notarised build
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:

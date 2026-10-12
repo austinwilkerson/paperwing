@@ -21,7 +21,8 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
-const { Readable } = require('node:stream');
+const { Readable, Transform } = require('node:stream');
+const { pipeline } = require('node:stream/promises');
 const crypto = require('node:crypto');
 
 /** PAPERWING_TRACE=1 prints startup timings (ms since the process started) */
@@ -76,7 +77,16 @@ let mainWindow = null;
 let rendererReady = false;
 /** Set once the renderer has dealt with unsaved documents */
 let allowClose = false;
+/** macOS: Cmd+Q is in progress, so quit once the window has closed */
+let quitting = false;
 const pendingFiles = [];
+const pendingCommands = [];
+/**
+ * Files the user opened or saved through Paperwing. The renderer may only
+ * write back to these, never to an arbitrary path.
+ */
+const knownPaths = new Set();
+const pathKey = (p) => (IS_MAC ? p : path.resolve(p).toLowerCase());
 
 const isPdfPath = (p) =>
   typeof p === 'string' && /\.pdf$/i.test(p) && fs.existsSync(p);
@@ -88,10 +98,13 @@ function pdfArgs(argv) {
 async function sendFile(filePath) {
   if (!mainWindow || !rendererReady) {
     pendingFiles.push(filePath);
+    // macOS: a file opened while the app runs with no window
+    if (!mainWindow && app.isReady()) createWindow();
     return;
   }
   try {
     const data = await fsp.readFile(filePath);
+    knownPaths.add(pathKey(filePath));
     mainWindow.webContents.send('paperwing:open-file', {
       path: filePath,
       name: path.basename(filePath),
@@ -178,10 +191,16 @@ const SECURITY_HEADERS = {
 };
 
 function resolveRequestPath(url) {
-  let pathname = decodeURIComponent(new URL(url).pathname);
+  let pathname;
+  try {
+    pathname = decodeURIComponent(new URL(url).pathname);
+  } catch {
+    return null; // malformed URL
+  }
   if (pathname === '/' || pathname === '') pathname = '/app.html';
   const file = path.normalize(path.join(WEB_ROOT, pathname));
-  if (!file.startsWith(WEB_ROOT)) return null; // path traversal
+  // Path traversal: must stay inside the web folder
+  if (file !== WEB_ROOT && !file.startsWith(WEB_ROOT + path.sep)) return null;
   if (fs.existsSync(file) && fs.statSync(file).isDirectory()) {
     return path.join(file, 'index.html');
   }
@@ -214,47 +233,104 @@ function engineUrl(name) {
   return `${base.replace(/\/$/, '')}/${name}`;
 }
 
-/** Response for an on-demand engine file, downloading it if needed */
+/** Downloads an engine file into the cache and checks its SHA-256 */
+async function fetchEngine(entry) {
+  const cached = path.join(ENGINE_DIR(), entry.name);
+  const tmp = `${cached}.part`;
+  await fsp.mkdir(ENGINE_DIR(), { recursive: true });
+  const res = await net.fetch(engineUrl(entry.name));
+  if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+  const hash = crypto.createHash('sha256');
+  let received = 0;
+  const check = new Transform({
+    transform(chunk, _enc, done) {
+      hash.update(chunk);
+      received += chunk.length;
+      engineProgress(entry, received);
+      done(null, chunk);
+    },
+  });
+  try {
+    await pipeline(
+      Readable.fromWeb(res.body),
+      check,
+      fs.createWriteStream(tmp)
+    );
+    if (hash.digest('hex') !== entry.sha256)
+      throw new Error('Checksum mismatch');
+    await fsp.rename(tmp, cached);
+  } catch (err) {
+    await fsp.rm(tmp, { force: true });
+    throw err;
+  }
+}
+
+/** One download per file, however many requests ask for it */
+function downloadEngine(entry) {
+  if (!engineDownloads.has(entry.name)) {
+    const job = fetchEngine(entry).finally(() =>
+      engineDownloads.delete(entry.name)
+    );
+    engineDownloads.set(entry.name, job);
+  }
+  return engineDownloads.get(entry.name);
+}
+
+/** Tells the app how the first-use download is going (shown as a toast) */
+const engineReceived = new Map();
+function engineProgress(entry, received) {
+  engineReceived.set(entry.name, received);
+  const total = engines.files.reduce((n, f) => n + f.size, 0);
+  const got = [...engineReceived.values()].reduce((n, v) => n + v, 0);
+  mainWindow?.webContents.send('paperwing:engine-progress', {
+    percent: Math.min(100, Math.floor((got / total) * 100)),
+  });
+}
+
+let engineErrorShown = false;
+function engineFailed(err) {
+  console.error('Engine download failed:', err);
+  engineReceived.clear();
+  mainWindow?.webContents.send('paperwing:engine-progress', { error: true });
+  if (engineErrorShown || !mainWindow) return;
+  engineErrorShown = true;
+  dialog
+    .showMessageBox(mainWindow, {
+      type: 'warning',
+      message: "Couldn't download the Office conversion engine",
+      detail:
+        'Converting Word, Excel and PowerPoint files needs a one-time download (about 75 MB). ' +
+        'Check your internet connection and try the tool again.',
+    })
+    .finally(() => (engineErrorShown = false));
+}
+
+/** Response for an on-demand engine file, downloading it first if needed */
 async function serveEngineFile(entry, headers) {
   const cached = path.join(ENGINE_DIR(), entry.name);
-  if (fs.existsSync(cached) && fs.statSync(cached).size === entry.size) {
-    headers.set('Content-Length', String(entry.size));
-    const res = await net.fetch(pathToFileURL(cached).toString());
-    return new Response(res.body, { status: 200, headers });
+  if (!fs.existsSync(cached)) {
+    try {
+      // Only verified bytes ever reach the page
+      await downloadEngine(entry);
+    } catch (err) {
+      engineFailed(err);
+      return new Response('Engine download failed', { status: 503, headers });
+    }
   }
-  // Another request is already downloading it: wait, then serve the cache
-  if (engineDownloads.has(entry.name)) {
-    await engineDownloads.get(entry.name);
-    return serveEngineFile(entry, headers);
-  }
-  const res = await net.fetch(engineUrl(entry.name));
-  if (!res.ok || !res.body) {
-    return new Response('Engine download failed', { status: 503, headers });
-  }
-  fs.mkdirSync(ENGINE_DIR(), { recursive: true });
-  const tmp = `${cached}.part`;
-  const [toPage, toDisk] = res.body.tee();
-  const done = new Promise((resolve) => {
-    const out = fs.createWriteStream(tmp);
-    const hash = crypto.createHash('sha256');
-    Readable.fromWeb(toDisk)
-      .on('data', (chunk) => hash.update(chunk))
-      .pipe(out)
-      .on('finish', () => {
-        // Only keep a complete, untampered copy
-        if (hash.digest('hex') === entry.sha256) fs.renameSync(tmp, cached);
-        else fs.rmSync(tmp, { force: true });
-        resolve();
-      })
-      .on('error', () => {
-        fs.rmSync(tmp, { force: true });
-        resolve();
-      });
-  });
-  engineDownloads.set(entry.name, done);
-  done.finally(() => engineDownloads.delete(entry.name));
   headers.set('Content-Length', String(entry.size));
-  return new Response(toPage, { status: 200, headers });
+  const res = await net.fetch(pathToFileURL(cached).toString());
+  return new Response(res.body, { status: 200, headers });
+}
+
+/** Removes engine downloads left over from older versions */
+async function pruneOldEngines() {
+  const root = path.join(app.getPath('userData'), 'engines');
+  const dirs = await fsp.readdir(root).catch(() => []);
+  await Promise.all(
+    dirs
+      .filter((d) => d !== engines.tag)
+      .map((d) => fsp.rm(path.join(root, d), { recursive: true, force: true }))
+  );
 }
 
 function registerProtocol() {
@@ -284,8 +360,12 @@ function registerProtocol() {
 /* ------------------------------------------------------------------ */
 
 const TITLEBAR_HEIGHT = 40;
-/** The launch screen stays up at least this long */
-const SPLASH_MIN_MS = 900;
+/**
+ * The launch screen stays up this long (or until the app is ready, if that
+ * takes longer). The main window loads hidden behind it, so it appears
+ * fully drawn the moment the launch screen closes.
+ */
+const SPLASH_MIN_MS = 2000;
 
 let splashWindow = null;
 let splashShownAt = 0;
@@ -402,6 +482,12 @@ function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
     rendererReady = false;
+    allowClose = false;
+    if (quitting) app.quit();
+  });
+  // A crashed page can't answer the unsaved-changes check: let it close
+  mainWindow.webContents.on('render-process-gone', () => {
+    rendererReady = false;
   });
 
   // Links to the web open in the default browser; nothing else may open windows
@@ -414,6 +500,14 @@ function createWindow() {
       e.preventDefault();
       if (/^https?:\/\//.test(url)) shell.openExternal(url);
     }
+  });
+
+  // Tool frames stay inside the app too
+  mainWindow.webContents.on('will-frame-navigate', (e) => {
+    if (e.isMainFrame || /^(app:\/\/paperwing|blob:|data:|about:)/.test(e.url))
+      return;
+    e.preventDefault();
+    if (/^https?:\/\//.test(e.url)) shell.openExternal(e.url);
   });
 
   mainWindow.webContents.once('dom-ready', () => trace('app.html parsed'));
@@ -429,8 +523,30 @@ function createWindow() {
 /* IPC bridge (see preload.cjs)                                        */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Requests must come through the workspace page's own bridge. (Tool pages are
+ * same-origin frames, so they can reach that bridge via window.top; the bridge
+ * is therefore kept narrow: PDFs only, and writes only to files the user
+ * opened or saved.)
+ */
 function senderIsApp(e) {
-  return e.senderFrame && e.senderFrame.url.startsWith(ORIGIN);
+  return (
+    !!mainWindow &&
+    e.senderFrame === mainWindow.webContents.mainFrame &&
+    e.senderFrame.url.startsWith(ORIGIN)
+  );
+}
+
+/** Write via a temporary file, so a crash can't leave a half-written PDF */
+async function writeAtomic(filePath, data) {
+  const tmp = `${filePath}.paperwing-${process.pid}.tmp`;
+  await fsp.writeFile(tmp, Buffer.from(data));
+  try {
+    await fsp.rename(tmp, filePath);
+  } catch (err) {
+    await fsp.rm(tmp, { force: true });
+    throw err;
+  }
 }
 
 ipcMain.handle('paperwing:ready', (e) => {
@@ -439,6 +555,9 @@ ipcMain.handle('paperwing:ready', (e) => {
   trace('app ready');
   revealMainWindow();
   pendingFiles.splice(0).forEach(sendFile);
+  pendingCommands
+    .splice(0)
+    .forEach((c) => mainWindow?.webContents.send('paperwing:menu', c));
 });
 
 ipcMain.handle('paperwing:set-theme', (e, pref) => {
@@ -457,21 +576,19 @@ ipcMain.handle('paperwing:confirm-close', (e) => {
   mainWindow.close();
 });
 
-ipcMain.handle('paperwing:info', () => ({
-  version: app.getVersion(),
-  platform: process.platform,
-  portable: !!portableDir,
-  repository: pkg.paperwing?.repository ?? '',
-}));
-
+// Reopening a recent file or the last session
 ipcMain.handle('paperwing:read-file', async (e, filePath) => {
   if (!senderIsApp(e) || !isPdfPath(filePath)) return null;
-  return fsp.readFile(filePath);
+  const data = await fsp.readFile(filePath);
+  knownPaths.add(pathKey(filePath));
+  return data;
 });
 
+// "Save" back to a file the user opened
 ipcMain.handle('paperwing:write-file', async (e, filePath, data) => {
-  if (!senderIsApp(e) || !/\.pdf$/i.test(filePath)) return false;
-  await fsp.writeFile(filePath, Buffer.from(data));
+  if (!senderIsApp(e) || typeof filePath !== 'string') return false;
+  if (!knownPaths.has(pathKey(filePath))) return false;
+  await writeAtomic(filePath, data);
   return true;
 });
 
@@ -482,7 +599,8 @@ ipcMain.handle('paperwing:save-as', async (e, suggestedName, data) => {
     filters: [{ name: 'PDF', extensions: ['pdf'] }],
   });
   if (canceled || !filePath) return null;
-  await fsp.writeFile(filePath, Buffer.from(data));
+  await writeAtomic(filePath, data);
+  knownPaths.add(pathKey(filePath));
   return { path: filePath, name: path.basename(filePath) };
 });
 
@@ -494,11 +612,10 @@ ipcMain.handle('paperwing:open-dialog', async (e) => {
   });
   if (canceled) return [];
   return Promise.all(
-    filePaths.map(async (p) => ({
-      path: p,
-      name: path.basename(p),
-      data: await fsp.readFile(p),
-    }))
+    filePaths.map(async (p) => {
+      knownPaths.add(pathKey(p));
+      return { path: p, name: path.basename(p), data: await fsp.readFile(p) };
+    })
   );
 });
 
@@ -514,8 +631,15 @@ function buildMenu() {
   }
   // macOS: menu accelerators win over page key handling, so each item
   // forwards its command to the app instead of acting on the page.
-  const send = (command) => () =>
-    mainWindow?.webContents.send('paperwing:menu', command);
+  const send = (command) => () => {
+    if (mainWindow && rendererReady) {
+      mainWindow.webContents.send('paperwing:menu', command);
+    } else {
+      // No window (app still running on macOS): open one, then run it
+      pendingCommands.push(command);
+      if (!mainWindow) createWindow();
+    }
+  };
   const item = (label, accelerator, command) => ({
     label,
     accelerator,
@@ -532,7 +656,7 @@ function buildMenu() {
           { type: 'separator' },
           { role: 'services' },
           { type: 'separator' },
-          { role: 'hide' },
+          { role: 'hide' }, // Cmd+H, so Read Mode uses Shift+Cmd+H
           { role: 'hideOthers' },
           { role: 'unhide' },
           { type: 'separator' },
@@ -585,7 +709,7 @@ function buildMenu() {
           item('Rotate Clockwise', 'Shift+Cmd+=', 'rotateCw'),
           item('Rotate Counterclockwise', 'Shift+Cmd+-', 'rotateCcw'),
           { type: 'separator' },
-          item('Read Mode', 'Cmd+H', 'readMode'),
+          item('Read Mode', 'Shift+Cmd+H', 'readMode'),
           item('Full Screen', 'Cmd+L', 'fullScreen'),
           item('Page Thumbnails', 'F4', 'navPane'),
           item('Tools Panel', 'Shift+F4', 'toolsPane'),
@@ -637,11 +761,28 @@ app.whenReady().then(() => {
     });
   });
 
+  // Nothing in Paperwing needs the camera, location, notifications etc.
+  const allowed = new Set([
+    'fullscreen',
+    'clipboard-read',
+    'clipboard-sanitized-write',
+  ]);
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) =>
+    cb(allowed.has(permission))
+  );
+
   createWindow();
+  setTimeout(() => pruneOldEngines().catch(() => {}), 10000);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+// macOS: the window's close is checked for unsaved work first; once it has
+// closed, finish quitting
+app.on('before-quit', () => {
+  quitting = true;
 });
 
 app.on('window-all-closed', () => {

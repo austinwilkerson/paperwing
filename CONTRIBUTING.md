@@ -25,10 +25,10 @@ cd desktop && npm run dev
 
 ## Guidelines
 
-- **Keep the engine untouched.** Paperwing code lives in `app.html`, `src/acro/`, `src/reskin/`,
+- **Leave BentoPDF's code untouched.** Paperwing code lives in `app.html`, `src/acro/`, `src/reskin/`,
   `reskin/` and `desktop/`. Avoid editing BentoPDF's files under `src/js`, `src/pages`, `public/`
   etc. — style or hook them from the integration layer instead, so upstream updates merge cleanly.
-  Engine improvements are best contributed to BentoPDF directly.
+  Improvements to the tools themselves are best contributed to BentoPDF directly.
 - **Follow the design language.** New UI should match the existing Acrobat-style look in both light
   and dark themes: use the CSS tokens (`--surface`, `--text`, `--accent`… in the shell, `--rs-*` in
   tool pages), 32 px controls, pill-shaped buttons and the Source Sans 3 typeface.

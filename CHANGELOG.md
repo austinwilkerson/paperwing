@@ -14,6 +14,7 @@ First public release, built on BentoPDF 2.8.8.
 - Acrobat-style workspace: tabbed documents, Home with recent and starred files, a searchable All tools sidebar,
   Edit / Convert / E-Sign tool panels, floating quick-action toolbar and right navigation rail
 - Built-in viewer with comments, highlights, drawing, text boxes, shapes, stamps, links and redaction
+- Password-protected PDFs open after a password prompt
 - Every BentoPDF tool runs beside the open document (side panel, or the document area for editors); tools that start from other files open in a workspace tab where the result appears
 - Light and neutral dark themes that follow the system, with an override in Preferences
 - Acrobat-compatible keyboard shortcuts including single-key tool accelerators; macOS menu bar
@@ -27,3 +28,5 @@ First public release, built on BentoPDF 2.8.8.
 - Small download: the LibreOffice engine for Office → PDF conversion is fetched once on first use (SHA-256 verified), and unused Chromium files are trimmed
 - Automatic default zoom (fit width, up to 150%), configurable in Preferences
 - Unit tests for the shell and an end-to-end UI test suite
+
+[1.0.0]: https://github.com/rohanvijaykumar/paperwing/releases/tag/v1.0.0

@@ -7,7 +7,6 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('paperwing', {
   platform: process.platform,
   ready: () => ipcRenderer.invoke('paperwing:ready'),
-  info: () => ipcRenderer.invoke('paperwing:info'),
   setTheme: (pref) => ipcRenderer.invoke('paperwing:set-theme', pref),
   openDialog: () => ipcRenderer.invoke('paperwing:open-dialog'),
   readFile: (path) => ipcRenderer.invoke('paperwing:read-file', path),
@@ -26,6 +25,12 @@ contextBridge.exposeInMainWorld('paperwing', {
     const listener = (_e, command) => callback(command);
     ipcRenderer.on('paperwing:menu', listener);
     return () => ipcRenderer.removeListener('paperwing:menu', listener);
+  },
+  onEngineProgress: (callback) => {
+    const listener = (_e, progress) => callback(progress);
+    ipcRenderer.on('paperwing:engine-progress', listener);
+    return () =>
+      ipcRenderer.removeListener('paperwing:engine-progress', listener);
   },
   onOpenFile: (callback) => {
     const listener = (_e, file) => callback(file);

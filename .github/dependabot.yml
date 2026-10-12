@@ -1,20 +1,17 @@
 version: 2
 updates:
+  # Desktop shell (Electron, packaging, e2e tooling). The repository root holds
+  # BentoPDF's dependencies, which are updated by merging BentoPDF releases.
   - package-ecosystem: 'npm'
-    directory: '/'
+    directory: '/desktop'
     schedule:
-      interval: 'daily'
+      interval: 'weekly'
     groups:
-      npm-dependencies:
+      desktop-dependencies:
         patterns:
           - '*'
 
   - package-ecosystem: 'github-actions'
-    directory: '/'
-    schedule:
-      interval: 'daily'
-
-  - package-ecosystem: 'docker'
     directory: '/'
     schedule:
       interval: 'weekly'

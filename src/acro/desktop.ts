@@ -9,17 +9,9 @@ export interface DesktopFile {
   data: Uint8Array;
 }
 
-export interface DesktopInfo {
-  version: string;
-  platform: string;
-  portable: boolean;
-  repository: string;
-}
-
 interface DesktopBridge {
   platform: string;
   ready(): Promise<void>;
-  info(): Promise<DesktopInfo>;
   setTheme(pref: 'system' | 'light' | 'dark'): Promise<void>;
   openDialog(): Promise<DesktopFile[]>;
   readFile(path: string): Promise<Uint8Array | null>;
@@ -36,6 +28,10 @@ interface DesktopBridge {
   requestClose(): Promise<void>;
   /** Application-menu commands (macOS menu bar) */
   onMenuCommand?(callback: (command: string) => void): () => void;
+  /** First-use download of the Office conversion engine */
+  onEngineProgress?(
+    callback: (progress: { percent?: number; error?: boolean }) => void
+  ): () => void;
 }
 
 export const desktop: DesktopBridge | undefined = (window as any).paperwing;

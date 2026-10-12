@@ -1,4 +1,4 @@
-name: BentoPDF CodeQL config
+name: Paperwing CodeQL config
 
 paths-ignore:
   - dist
@@ -8,14 +8,13 @@ paths-ignore:
   - vendor
   - bentopdf-pymupdf-wasm
   - libreoffice-wasm-package
-  - bentopdf-airgap-bundle
+  - desktop/release
   - public/pdfjs-viewer
   - public/pdfjs-annotation-viewer
   - public/libreoffice-wasm
   - public/coherentpdf.browser.min.js
   - public/workers
   - public/embedpdf
-  - docs/.vitepress
   - '**/*.min.js'
   - '**/*.d.ts'
 

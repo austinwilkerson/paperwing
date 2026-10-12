@@ -17,8 +17,12 @@ application (`desktop/`). These additions are released under the same
 AGPL-3.0 license. BentoPDF's own application source is included unmodified
 apart from a two-line change in `vite.config.ts` that registers the Paperwing
 plugin. Repository-level files were adapted for this project: the README
-(BentoPDF's original is kept in `docs/BENTOPDF.md`) and the GitHub workflows
-(upstream's Docker/website deployment workflows were removed).
+(BentoPDF's original is kept in `docs/BENTOPDF.md`), CONTRIBUTING, SECURITY,
+CODE_OF_CONDUCT, the issue and pull request templates and the GitHub workflows.
+BentoPDF's web-hosting files (Docker, nginx, Helm, Cloudflare and Unraid
+configurations, the air-gap bundle) and its documentation website were removed,
+as they don't apply to a desktop app; they remain available in the BentoPDF
+repository.
 
 BentoPDF's original README is preserved in [`docs/BENTOPDF.md`](docs/BENTOPDF.md).
 If you find Paperwing useful, please consider

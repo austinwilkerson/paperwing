@@ -68,7 +68,7 @@ with the command palette (<kbd>Shift+Ctrl+P</kbd>).
 | Rotate view clockwise        | <kbd>Shift+Ctrl++</kbd> | <kbd>⇧⌘+</kbd> |
 | Rotate view counterclockwise | <kbd>Shift+Ctrl+−</kbd> | <kbd>⇧⌘−</kbd> |
 | Full screen                  | <kbd>Ctrl+L</kbd>       | <kbd>⌘L</kbd>  |
-| Read mode                    | <kbd>Ctrl+H</kbd>       | <kbd>⌘H</kbd>  |
+| Read mode                    | <kbd>Ctrl+H</kbd>       | <kbd>⇧⌘H</kbd> |
 | Show/hide page thumbnails    | <kbd>F4</kbd>           | <kbd>F4</kbd>  |
 | Show/hide tools panel        | <kbd>Shift+F4</kbd>     | <kbd>⇧F4</kbd> |
 

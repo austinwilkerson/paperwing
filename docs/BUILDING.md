@@ -60,11 +60,11 @@ the open document, theming of tool pages, and more. Set `CHROME_PATH` if Chrome 
 
 ## Packaging
 
-| Command (in `desktop/`) | Output in `desktop/release/`                                                            |
-| ----------------------- | --------------------------------------------------------------------------------------- |
-| `npm run dist:win`      | `Paperwing-Setup-<v>-x64.exe` and `Paperwing-Portable-<v>-win-x64.zip`                  |
-| `npm run dist:mac`      | `Paperwing-<v>-mac-arm64.dmg`, `…-mac-x64.dmg` and matching `.zip`s (must run on macOS) |
-| `npm run pack`          | Unpacked app folder only, for quick checks                                              |
+| Command (in `desktop/`) | Output in `desktop/release/`                                           |
+| ----------------------- | ---------------------------------------------------------------------- |
+| `npm run dist:win`      | `Paperwing-Setup-<v>-x64.exe` and `Paperwing-Portable-<v>-win-x64.zip` |
+| `npm run dist:mac`      | `Paperwing-<v>-mac-arm64.dmg` and `…-mac-x64.dmg` (must run on macOS)  |
+| `npm run pack`          | Unpacked app folder only, for quick checks                             |
 
 Packaging is configured in `desktop/electron-builder.yml`. The app icon is generated from
 `desktop/build/icon.svg` (`icon.png`, 1024 px, is what electron-builder uses).
@@ -100,10 +100,12 @@ In GitHub Actions, add these as repository secrets and expose them as environmen
 
 1. Update `version` in `desktop/package.json` and add a section to `CHANGELOG.md`.
 2. Update `docs/RELEASE_NOTES.md` (it becomes the GitHub release description).
-3. Commit, then tag and push:
+3. Commit, then tag and push the branch and the tag (push only this one tag: GitHub doesn't start
+   workflows when more than three tags are pushed at once):
    ```bash
    git tag v1.0.0
-   git push origin main --tags
+   git push origin main
+   git push origin v1.0.0
    ```
 4. The **Release desktop apps** workflow builds Windows and macOS on GitHub's runners (about
    15–25 minutes) and creates a **draft release** with all installers and a `SHA256SUMS.txt`.
@@ -118,12 +120,23 @@ The in-app update check compares against the latest _published_ release of the r
 ## Pulling in new BentoPDF versions
 
 ```bash
-git fetch upstream --tags            # upstream = https://github.com/alam00000/bentopdf
-git merge v2.9.0                     # the BentoPDF release tag you want
+# upstream = https://github.com/alam00000/bentopdf (fetched without its tags, so BentoPDF's
+# version tags never mix with Paperwing's)
+git fetch upstream refs/tags/v2.9.0:refs/tags/upstream/v2.9.0
+git merge upstream/v2.9.0            # the BentoPDF release you want
 npm ci && npx vitest run && (cd desktop && npm run dev)
 ```
 
 Conflicts are rare because Paperwing's code lives in its own folders. When they happen they're
-usually in `vite.config.ts`, `package-lock.json` or the moved/removed repository files (README,
-workflows) — keep Paperwing's version of those. After merging, look over a few tool pages in both
+usually in `vite.config.ts`, `package-lock.json` or repository files Paperwing replaced (README,
+CONTRIBUTING, workflows, issue templates) — keep Paperwing's version of those.
+
+Paperwing also removed BentoPDF's web-hosting files (Docker, nginx, Helm chart, Cloudflare and
+Unraid configs, the air-gap bundle) and its documentation website. If upstream changed any of them,
+the merge reports a modify/delete conflict; resolve it by keeping them deleted:
+
+````bash
+git status --short | grep '^DU' | cut -c4- | xargs git rm
+``` After merging, look over a few tool pages in both
 themes: new upstream markup may need a small addition to `src/reskin/reskin.css` or `apps.css`.
+````

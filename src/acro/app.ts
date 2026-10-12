@@ -1,6 +1,7 @@
 /**
- * Paperwing: a desktop PDF workspace (Home, All tools and tabbed document
- * views) around BentoPDF's viewer and tool pages, which do the PDF work.
+ * Paperwing: a desktop PDF workspace (Home plus tabbed documents and tool
+ * workspaces, each with a tools sidebar) around BentoPDF's viewer and tool
+ * pages, which do the PDF work.
  */
 import '@phosphor-icons/web/duotone';
 import { icon, toolIcon, type IconName } from './icons';
@@ -17,10 +18,16 @@ import {
   type AppTool,
   type ToolGroup,
 } from './catalog';
-import { Viewer, type PageInfo } from './viewer';
+import { OpenCancelled, Viewer, type PageInfo } from './viewer';
 import { desktop, isMac, key, toFile } from './desktop';
 import { checkForUpdates, scheduleUpdateCheck } from './updates';
-import { findShortcut, formatCombo, SHORTCUTS, type KeyInput } from './keymap';
+import {
+  findShortcut,
+  formatCombo,
+  keysFor,
+  SHORTCUTS,
+  type KeyInput,
+} from './keymap';
 import {
   getPrefs,
   noteToolUsed,
@@ -236,6 +243,20 @@ function toast(
   setTimeout(() => el.remove(), 4600);
 }
 
+/** A toast that stays until closed, with text that can change in place */
+function statusToast(message: string) {
+  const text = h('span', {}, message);
+  const el = h('div', { class: 'toast', role: 'status' }, text);
+  $('#toasts').append(el);
+  return {
+    update: (m: string) => (text.textContent = m),
+    close: () => {
+      el.classList.add('is-leaving');
+      setTimeout(() => el.remove(), 400);
+    },
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /* State                                                               */
 /* ------------------------------------------------------------------ */
@@ -251,8 +272,7 @@ interface FrameTool {
   owner: string;
 }
 
-interface DocTab {
-  kind: 'doc';
+interface Tab {
   id: string;
   name: string;
   /** Workspace without a document yet (a tool opened from Home, Create…) */
@@ -278,13 +298,10 @@ interface DocTab {
   savedVersion: number;
 }
 
-const isDirty = (t: Tab) => t.kind === 'doc' && t.version !== t.savedVersion;
-
-type Tab = DocTab;
+const isDirty = (t: Tab) => t.version !== t.savedVersion;
 
 const tabs: Tab[] = [];
 let activeId = 'home';
-let lastDocId: string | null = null;
 let tabSeq = 0;
 
 const viewer = new Viewer($('#viewer-host'));
@@ -390,7 +407,6 @@ function activate(id: string) {
   closePopover?.();
   activeId = id;
   const tab = activeTab();
-  if (tab?.kind === 'doc') lastDocId = tab.id;
 
   document
     .querySelectorAll<HTMLElement>('.view')
@@ -419,7 +435,7 @@ const closedDocs: string[] = [];
 async function requestCloseTab(id: string): Promise<boolean> {
   const tab = tabs.find((t) => t.id === id);
   if (!tab) return true;
-  if (tab.kind === 'doc' && isDirty(tab)) {
+  if (isDirty(tab)) {
     activate(id);
     const choice = await confirmUnsaved([tab]);
     if (choice === 'cancel') return false;
@@ -434,15 +450,14 @@ function closeTab(id: string) {
   if (i < 0) return;
   const tab = tabs[i];
   tabs.splice(i, 1);
-  if (tab.kind === 'doc' && tab.recentId) {
+  if (tab.recentId) {
     closedDocs.push(tab.recentId);
     if (closedDocs.length > 20) closedDocs.shift();
   }
   document
     .querySelectorAll(`[data-owner="${CSS.escape(id)}"]`)
     .forEach((el) => el.remove());
-  if (tab.kind === 'doc') viewer.close(tab.id);
-  if (lastDocId === id) lastDocId = null;
+  viewer.close(tab.id);
   if (activeId === id) {
     const next = tabs[Math.min(i, tabs.length - 1)];
     activate(next ? next.id : 'home');
@@ -459,7 +474,7 @@ async function reopenClosedTab() {
   if (entry) await openRecent(entry);
 }
 
-async function toggleStar(tab: DocTab) {
+async function toggleStar(tab: Tab) {
   tab.starred = !tab.starred;
   if (tab.recentId) await updateRecent(tab.recentId, { starred: tab.starred });
   renderTabs();
@@ -517,9 +532,8 @@ async function openFromDialog() {
 }
 
 /** An already-open tab for the same file on disk, if any */
-async function findOpenTab(source: FileSource): Promise<DocTab | undefined> {
+async function findOpenTab(source: FileSource): Promise<Tab | undefined> {
   for (const t of tabs) {
-    if (t.kind !== 'doc') continue;
     if (source.path && t.path === source.path) return t;
     if (
       source.handle &&
@@ -532,12 +546,11 @@ async function findOpenTab(source: FileSource): Promise<DocTab | undefined> {
 }
 
 /** Create a tab (document or empty workspace) and its tools panel */
-function createTab(name: string, blank: boolean): DocTab {
+function createTab(name: string, blank: boolean): Tab {
   const id = `doc-${++tabSeq}`;
   const panelEl = h('div', { class: 'lp', dataset: { owner: id } });
   $('#left-panel').append(panelEl);
-  const tab: DocTab = {
-    kind: 'doc',
+  const tab: Tab = {
     id,
     name,
     blank,
@@ -557,7 +570,7 @@ function createTab(name: string, blank: boolean): DocTab {
 }
 
 /** An empty workspace tab with the tools sidebar */
-function newWorkspace(name = 'Tools'): DocTab {
+function newWorkspace(name = 'Tools'): Tab {
   const tab = createTab(name, true);
   activate(tab.id);
   return tab;
@@ -568,14 +581,14 @@ async function openDocument(
   source: FileSource = {},
   recentId?: string,
   /** Load into this empty workspace instead of a new tab */
-  into?: DocTab
+  into?: Tab
 ) {
   const existing = await findOpenTab(source);
   if (existing) {
     activate(existing.id);
     return;
   }
-  let tab: DocTab;
+  let tab: Tab;
   if (into && into.blank && tabs.includes(into)) {
     tab = into;
     tab.blank = false;
@@ -593,11 +606,17 @@ async function openDocument(
   try {
     await viewer.open(id, await file.arrayBuffer());
   } catch (err) {
-    console.error(err);
-    toast(`Couldn't open ${file.name}`);
-    closeTab(id);
+    if (tabs.includes(tab)) {
+      if (!(err instanceof OpenCancelled)) {
+        console.error(err);
+        toast(`Couldn't open ${file.name}`);
+      }
+      closeTab(id);
+    }
     return;
   }
+  // Closed while it was loading
+  if (!tabs.includes(tab)) return;
   tab.loading = false;
   tab.page = viewer.pageInfo(id) ?? tab.page;
   if (activeId === id) renderDocChrome(tab);
@@ -741,7 +760,7 @@ const startsEmpty = (tool: AppTool) =>
   isCreateTool(tool) || STARTS_EMPTY.has(tool.id);
 
 /** Ask for PDFs, open the first into the workspace, then run the tool on it */
-async function pickThenRun(tab: DocTab, tool: AppTool): Promise<boolean> {
+async function pickThenRun(tab: Tab, tool: AppTool): Promise<boolean> {
   const picked = await pickFiles();
   if (!picked.length) return false;
   const [first, ...rest] = picked;
@@ -763,7 +782,7 @@ async function pickThenRun(tab: DocTab, tool: AppTool): Promise<boolean> {
 
 /** Show a tool in a tab: options in the side panel, or the document area
  *  for tools that need a full canvas (the tools sidebar stays put). */
-function mountTool(tab: DocTab, tool: AppTool, files: File[]) {
+function mountTool(tab: Tab, tool: AppTool, files: File[]) {
   if (tool.full) {
     disposeFrameTool(tab.fullTool);
     const ft = createFrameTool(tool, files, tab.id);
@@ -799,7 +818,7 @@ function mountTool(tab: DocTab, tool: AppTool, files: File[]) {
 
 /** Run a tool in a tab. With a document open it works on that document;
  *  in an empty workspace it either starts empty or asks for a PDF first. */
-async function openToolOnDoc(tab: DocTab, tool: AppTool, files: File[] = []) {
+async function openToolOnDoc(tab: Tab, tool: AppTool, files: File[] = []) {
   noteToolUsed(tool.id);
   if (!tool.href && !tool.action) return;
 
@@ -849,21 +868,19 @@ function showToolsSidebar(query = '') {
   input?.select();
 }
 
-function closeFullTool(tab: DocTab) {
+function closeFullTool(tab: Tab) {
   disposeFrameTool(tab.fullTool);
   tab.fullTool = undefined;
   renderDocChrome(tab);
 }
 
-function runViewerAction(tab: DocTab, tool: AppTool) {
+function runViewerAction(tab: Tab, tool: AppTool) {
   if (tool.action === 'comment') {
     viewer.toggleSidebar(tab.id, 'comment-panel');
     if (tab.activeAnnot !== 'comment') setAnnot(tab, 'comment');
   } else if (tool.action === 'redact') {
     viewer.command(tab.id, 'redaction:redact');
     viewer.toggleSidebar(tab.id, 'redaction-panel');
-  } else if (tool.action === 'find') {
-    viewer.command(tab.id, 'panel:toggle-search');
   }
 }
 
@@ -891,7 +908,7 @@ const PANEL_TITLES: Record<PanelKind, string> = {
   sign: 'E-Sign',
 };
 
-function renderLeftPanel(tab: DocTab) {
+function renderLeftPanel(tab: Tab) {
   const el = tab.panelEl;
   $('#left-panel').classList.toggle('is-closed', !tab.panelOpen);
   $('#left-panel').classList.toggle('has-tool', !!tab.panelTool);
@@ -963,7 +980,7 @@ function renderLeftPanel(tab: DocTab) {
 /** Sidebar groups that are expanded (shared by all tabs) */
 const openToolGroups = new Set<string>(['Popular']);
 
-function toolRow(tab: DocTab, tool: AppTool, redraw: () => void) {
+function toolRow(tab: Tab, tool: AppTool, redraw: () => void) {
   const isPinned = getPrefs().pinnedTools.includes(tool.id);
   const pin = h(
     'span',
@@ -1008,7 +1025,7 @@ function toolRow(tab: DocTab, tool: AppTool, redraw: () => void) {
   );
 }
 
-function renderToolList(tab: DocTab, list: HTMLElement) {
+function renderToolList(tab: Tab, list: HTMLElement) {
   const redraw = () => renderToolList(tab, list);
   const q = tab.toolQuery.trim();
   const out: Node[] = [];
@@ -1077,7 +1094,7 @@ function renderToolList(tab: DocTab, list: HTMLElement) {
   list.replaceChildren(...out);
 }
 
-function renderDocChrome(tab: DocTab) {
+function renderDocChrome(tab: Tab) {
   if (activeId !== tab.id) return;
   document
     .querySelectorAll<HTMLButtonElement>('#gb-tabs button')
@@ -1157,12 +1174,12 @@ const ANNOT_TOOLS: {
 const buttonForTool = new Map<string, string>();
 let pendingButton: string | null = null;
 
-function runAnnotCommand(tab: DocTab, button: string, command: string) {
+function runAnnotCommand(tab: Tab, button: string, command: string) {
   pendingButton = button;
   viewer.command(tab.id, command);
 }
 
-function setAnnot(tab: DocTab, id: string) {
+function setAnnot(tab: Tab, id: string) {
   const def = ANNOT_TOOLS.find((t) => t.id === id);
   if (id === 'sign') {
     const tool = getTool('sign-pdf');
@@ -1178,7 +1195,7 @@ function setAnnot(tab: DocTab, id: string) {
 
 viewer.onActiveTool((tabId, toolId) => {
   const tab = tabs.find((t) => t.id === tabId);
-  if (tab?.kind !== 'doc') return;
+  if (!tab) return;
   if (toolId && pendingButton) buttonForTool.set(toolId, pendingButton);
   pendingButton = null;
   tab.activeAnnot = toolId ? (buttonForTool.get(toolId) ?? 'more') : null;
@@ -1199,7 +1216,7 @@ const MORE_ANNOTS: { label: string; command: string }[] = [
   { label: 'Stamp', command: 'annotation:add-stamp' },
 ];
 
-function renderQuickbar(tab: DocTab) {
+function renderQuickbar(tab: Tab) {
   const bar = $('#quickbar');
   const grip = h('div', { class: 'qb-grip', title: 'Drag to move' });
   const buttons = ANNOT_TOOLS.map((t) =>
@@ -1242,7 +1259,7 @@ function renderQuickbar(tab: DocTab) {
         },
         {
           label: 'Redo',
-          shortcut: key('Ctrl+Y'),
+          shortcut: key('Shift+Ctrl+Z'),
           icon: icon('redo', 16),
           onClick: () => viewer.command(tab.id, 'history:redo'),
         },
@@ -1301,7 +1318,7 @@ function makeDraggable(el: HTMLElement, handle: HTMLElement) {
 
 /* Right rail ----------------------------------------------------------- */
 
-function renderRightRail(tab: DocTab) {
+function renderRightRail(tab: Tab) {
   const rail = $('#right-rail');
   const top = h(
     'div',
@@ -1385,7 +1402,7 @@ function renderRightRail(tab: DocTab) {
 
 viewer.onPage((tabId, info) => {
   const tab = tabs.find((t) => t.id === tabId);
-  if (tab?.kind !== 'doc') return;
+  if (!tab) return;
   tab.page = info;
   if (activeId === tabId) {
     const input = $<HTMLInputElement>('#right-rail .rr-page');
@@ -1398,13 +1415,13 @@ viewer.onPage((tabId, info) => {
 
 /* Save / print / download / find -------------------------------------- */
 
-async function docBlob(tab: DocTab): Promise<Blob | null> {
+async function docBlob(tab: Tab): Promise<Blob | null> {
   const bytes = await viewer.exportBytes(tab.id);
   return bytes ? new Blob([bytes], { type: 'application/pdf' }) : null;
 }
 
 /** Save a document; resolves true if it was written somewhere */
-async function saveDoc(tab: DocTab, saveAs = false): Promise<boolean> {
+async function saveDoc(tab: Tab, saveAs = false): Promise<boolean> {
   const version = tab.version;
   const blob = await docBlob(tab);
   if (!blob) return false;
@@ -1586,7 +1603,7 @@ async function refreshRecent() {
         e.stopPropagation();
         await updateRecent(r.id, { starred: !r.starred });
         tabs.forEach((t) => {
-          if (t.kind === 'doc' && t.recentId === r.id) t.starred = !r.starred;
+          if (t.recentId === r.id) t.starred = !r.starred;
         });
         renderTabs();
         void refreshRecent();
@@ -1707,10 +1724,13 @@ $('#create-btn').addEventListener('click', (e) =>
   showMenu(e.currentTarget as HTMLElement, createMenuItems())
 );
 
+/** First combo of a shortcut, formatted for this platform */
+const shortcutLabel = (id: string) =>
+  formatCombo(keysFor(SHORTCUTS.find((x) => x.id === id)!, isMac)[0], isMac);
+
 $('#menu-btn').addEventListener('click', (e) => {
   const doc = activeDoc();
-  const sc = (id: string) =>
-    formatCombo(SHORTCUTS.find((x) => x.id === id)!.keys[0], isMac);
+  const sc = shortcutLabel;
   showMenu(e.currentTarget as HTMLElement, [
     {
       label: 'Open…',
@@ -1844,9 +1864,20 @@ function showThemeMenu(anchor: HTMLElement) {
   ]);
 }
 
-function dialog(title: string, body: Node) {
+/** Modal with a close button; Escape or a click outside closes it too */
+function dialog(title: string, body: Node): () => void {
   const backdrop = h('div', { class: 'dlg-backdrop' });
-  const close = () => backdrop.remove();
+  const close = () => {
+    backdrop.remove();
+    document.removeEventListener('keydown', onKey, true);
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
+    }
+  };
+  document.addEventListener('keydown', onKey, true);
   backdrop.append(
     h(
       'div',
@@ -1865,6 +1896,7 @@ function dialog(title: string, body: Node) {
     (e) => e.target === backdrop && close()
   );
   document.body.append(backdrop);
+  return close;
 }
 
 function showAbout() {
@@ -1931,7 +1963,7 @@ function showShortcuts() {
             h(
               'td',
               {},
-              ...sc.keys.flatMap((k, i) => [
+              ...keysFor(sc, isMac).flatMap((k, i) => [
                 i ? ' ' : '',
                 h('kbd', {}, formatCombo(k, isMac)),
               ])
@@ -2021,9 +2053,86 @@ function askDialog<T>(
   });
 }
 
+/** Password prompt for protected PDFs; resolves null if cancelled */
+function passwordDialog(name: string, wrong: boolean): Promise<string | null> {
+  return new Promise((resolve) => {
+    const backdrop = h('div', { class: 'dlg-backdrop' });
+    const input = h('input', {
+      type: 'password',
+      class: 'dlg-input',
+      autocomplete: 'off',
+      'aria-label': 'Password',
+    }) as HTMLInputElement;
+    const finish = (v: string | null) => {
+      backdrop.remove();
+      document.removeEventListener('keydown', onKey, true);
+      resolve(v);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        finish(null);
+      } else if (e.key === 'Enter' && input.value) {
+        e.preventDefault();
+        finish(input.value);
+      }
+    };
+    document.addEventListener('keydown', onKey, true);
+    backdrop.append(
+      h(
+        'div',
+        { class: 'dlg', role: 'dialog', 'aria-label': 'Password' },
+        h('div', { class: 'dlg-head' }, h('h2', {}, 'Password')),
+        h(
+          'div',
+          { class: 'dlg-body' },
+          h(
+            'p',
+            {},
+            wrong
+              ? 'That password is incorrect. Try again.'
+              : `“${name}” is protected. Enter the password to open it.`
+          ),
+          input,
+          h(
+            'div',
+            { class: 'dlg-actions' },
+            h(
+              'button',
+              {
+                type: 'button',
+                class: 'pill-btn',
+                onClick: () => finish(null),
+              },
+              'Cancel'
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
+                class: 'accent-btn',
+                onClick: () => input.value && finish(input.value),
+              },
+              'Open'
+            )
+          )
+        )
+      )
+    );
+    document.body.append(backdrop);
+    input.focus();
+  });
+}
+
+viewer.passwordPrompt = (tabId, wrong) =>
+  passwordDialog(
+    tabs.find((t) => t.id === tabId)?.name ?? 'This document',
+    wrong
+  );
+
 type UnsavedChoice = 'save' | 'discard' | 'cancel';
 
-function confirmUnsaved(docs: DocTab[]): Promise<UnsavedChoice> {
+function confirmUnsaved(docs: Tab[]): Promise<UnsavedChoice> {
   const many = docs.length > 1;
   return askDialog<UnsavedChoice>(
     many ? 'Save changes?' : `Save changes to “${docs[0].name}”?`,
@@ -2039,25 +2148,30 @@ function confirmUnsaved(docs: DocTab[]): Promise<UnsavedChoice> {
   );
 }
 
-async function closeAllTabs(): Promise<boolean> {
-  const dirty = tabs.filter(isDirty) as DocTab[];
-  if (dirty.length) {
-    const choice = await confirmUnsaved(dirty);
-    if (choice === 'cancel') return false;
-    if (choice === 'save') {
-      for (const d of dirty) {
-        activate(d.id);
-        if (!(await saveDoc(d))) return false;
-      }
+/** Ask about unsaved documents (saving them if wanted); false = cancelled */
+async function settleUnsaved(): Promise<boolean> {
+  const dirty = tabs.filter(isDirty);
+  if (!dirty.length) return true;
+  const choice = await confirmUnsaved(dirty);
+  if (choice === 'cancel') return false;
+  if (choice === 'save') {
+    for (const d of dirty) {
+      activate(d.id);
+      if (!(await saveDoc(d))) return false;
     }
   }
+  return true;
+}
+
+async function closeAllTabs(): Promise<boolean> {
+  if (!(await settleUnsaved())) return false;
   [...tabs].forEach((t) => closeTab(t.id));
   return true;
 }
 
 viewer.onChange((tabId) => {
   const tab = tabs.find((t) => t.id === tabId);
-  if (tab?.kind !== 'doc') return;
+  if (!tab) return;
   const wasDirty = isDirty(tab);
   tab.version++;
   if (!wasDirty) renderTabs();
@@ -2067,8 +2181,9 @@ viewer.onChange((tabId) => {
 window.addEventListener('beforeunload', (e) => {
   if (!desktop && tabs.some(isDirty)) e.preventDefault();
 });
+// The tabs stay open on quit so the saved session can reopen them
 desktop?.onCloseRequested?.(async () => {
-  if (await closeAllTabs()) {
+  if (await settleUnsaved()) {
     persistSession();
     void desktop!.confirmClose();
   }
@@ -2078,12 +2193,12 @@ desktop?.onCloseRequested?.(async () => {
 
 const SESSION_KEY = 'paperwing:session';
 let restoring = false;
+/** A file the OS asked us to open during the restore; it stays in front */
+let launchPath: string | undefined;
 
 function persistSession() {
   if (restoring) return;
-  const docs = tabs
-    .filter((t): t is DocTab => t.kind === 'doc' && !!t.recentId)
-    .map((t) => t.recentId!);
+  const docs = tabs.filter((t) => !!t.recentId).map((t) => t.recentId!);
   const active = activeDoc()?.recentId ?? null;
   try {
     localStorage.setItem(SESSION_KEY, JSON.stringify({ docs, active }));
@@ -2102,23 +2217,27 @@ async function restoreSession() {
   }
   if (!saved?.docs?.length) return;
   restoring = true;
-  const recent = await listRecent();
-  for (const id of saved.docs) {
-    const entry = recent.find((r) => r.id === id);
-    // Files remembered only by browser handle need a click to re-grant access
-    if (!entry || (!entry.path && !entry.data)) continue;
-    const got = await reopenRecent(entry).catch((): null => null);
-    if (got)
-      await openDocument(
-        got.file,
-        { handle: got.handle, path: got.path },
-        entry.id
-      );
+  try {
+    const recent = await listRecent();
+    for (const id of saved.docs) {
+      const entry = recent.find((r) => r.id === id);
+      // Files remembered only by browser handle need a click to re-grant access
+      if (!entry || (!entry.path && !entry.data)) continue;
+      const got = await reopenRecent(entry).catch((): null => null);
+      if (got)
+        await openDocument(
+          got.file,
+          { handle: got.handle, path: got.path },
+          entry.id
+        );
+    }
+  } finally {
+    restoring = false;
   }
-  restoring = false;
-  const active = tabs.find(
-    (t) => t.kind === 'doc' && t.recentId === saved!.active
+  const active = tabs.find((t) =>
+    launchPath ? t.path === launchPath : t.recentId === saved!.active
   );
+  launchPath = undefined;
   if (active) activate(active.id);
   persistSession();
 }
@@ -2127,7 +2246,8 @@ async function restoreSession() {
 
 function setReadMode(on: boolean) {
   document.body.classList.toggle('is-reading', on);
-  if (on) toast(`Read mode — press Esc or ${key('Ctrl+H')} to exit`);
+  if (on)
+    toast(`Read mode — press Esc or ${shortcutLabel('readMode')} to exit`);
   if (!on && document.fullscreenElement) void document.exitFullscreen();
 }
 
@@ -2152,7 +2272,7 @@ document.addEventListener('fullscreenchange', () => {
 /* Zoom to (Ctrl+Y) --------------------------------------------------- */
 
 function showZoomMenu(
-  doc: DocTab,
+  doc: Tab,
   anchor: HTMLElement = $('#right-rail .rr-bottom') ?? $('#find-btn')
 ) {
   const level = (label: string, command: string): MenuItem => ({
@@ -2179,7 +2299,7 @@ function showZoomMenu(
 
 /* Document properties (Ctrl+D) ----------------------------------------- */
 
-function showProperties(doc: DocTab) {
+function showProperties(doc: Tab) {
   const info = viewer.docInfo(doc.id);
   const inches = (pt: number) => (pt / 72).toFixed(2);
   const mm = (pt: number) => Math.round((pt / 72) * 25.4);
@@ -2199,7 +2319,7 @@ function showProperties(doc: DocTab) {
     ['Unsaved changes', isDirty(doc) ? 'Yes' : 'No'],
   ];
   const editMeta = getTool('edit-metadata');
-  dialog(
+  const close = dialog(
     'Document properties',
     h(
       'div',
@@ -2219,7 +2339,7 @@ function showProperties(doc: DocTab) {
               type: 'button',
               class: 'pill-btn',
               onClick: () => {
-                document.querySelector('.dlg-backdrop')?.remove();
+                close();
                 void openToolOnDoc(doc, editMeta);
               },
             },
@@ -2260,7 +2380,7 @@ function showPreferences() {
   themeSelect.addEventListener('change', () =>
     setThemePref(themeSelect.value as ThemePref)
   );
-  dialog(
+  const close = dialog(
     'Preferences',
     h(
       'div',
@@ -2338,7 +2458,7 @@ function showPreferences() {
             type: 'button',
             class: 'pill-btn',
             onClick: () => {
-              document.querySelector('.dlg-backdrop')?.remove();
+              close();
               void runTool({
                 id: 'wasm-settings',
                 name: 'Engine settings',
@@ -2386,7 +2506,7 @@ function paletteCommands(): PaletteItem[] {
     }
     items.push({
       label: s.label,
-      hint: formatCombo(s.keys[0], isMac),
+      hint: formatCombo(keysFor(s, isMac)[0], isMac),
       icon: icon('chevronRight', 16),
       run: () => runShortcut(s.id),
     });
@@ -2484,13 +2604,11 @@ function openPalette(anchor?: HTMLElement) {
     const items = [
       ...results.querySelectorAll<HTMLButtonElement>('.menu-item'),
     ];
-    const i = items.indexOf(document.activeElement as HTMLButtonElement);
     if (e.key === 'Enter') items[0]?.click();
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       items[0]?.focus();
     }
-    void i;
   });
   results.addEventListener('keydown', (e) => {
     const items = [
@@ -2531,7 +2649,7 @@ const MARKUPS = [
 let shapeIdx = -1;
 let markupIdx = -1;
 
-function goPage(doc: DocTab, which: 'first' | 'last') {
+function goPage(doc: Tab, which: 'first' | 'last') {
   const info = viewer.pageInfo(doc.id);
   if (info) viewer.goToPage(doc.id, which === 'first' ? 1 : info.total);
 }
@@ -2545,7 +2663,7 @@ function switchTab(dir: 1 | -1) {
 /** Returns false if the action doesn't apply right now (key passes through) */
 function runShortcut(id: string): boolean {
   const doc = activeDoc();
-  const needDoc = (fn: (d: DocTab) => void) => {
+  const needDoc = (fn: (d: Tab) => void) => {
     if (!doc) return false;
     fn(doc);
     return true;
@@ -2806,7 +2924,7 @@ window.addEventListener('drop', async (e) => {
 
 $('#home-btn').addEventListener('click', () => activate('home'));
 
-// Frameless desktop window (WebView2 host) gets its own caption buttons
+// Theme the page, and tell the Electron shell so native chrome matches
 applyTheme();
 onThemeChange(() => void desktop?.setTheme(getThemePref()));
 void desktop?.setTheme(getThemePref());
@@ -2815,9 +2933,14 @@ void desktop?.setTheme(getThemePref());
 // the right (Windows) or left (macOS) end of our title bar.
 if (desktop) {
   document.body.classList.add('is-desktop', isMac ? 'is-mac' : 'is-win');
-  desktop.onOpenFile((f) => void openDocument(toFile(f), { path: f.path }));
+  desktop.onOpenFile((f) => {
+    if (restoring) launchPath = f.path;
+    void openDocument(toFile(f), { path: f.path });
+  });
   void desktop.ready();
   desktop.onMenuCommand?.((command) => {
+    // Like shortcut keys, menu commands wait while a dialog is open
+    if (document.querySelector('.dlg-backdrop')) return;
     if (command === 'about') return showAbout();
     if (command === 'shortcuts') return showShortcuts();
     if (command === 'undo' || command === 'redo') {
@@ -2833,6 +2956,19 @@ if (desktop) {
     }
     runShortcut(command);
   });
+  // First Office → PDF conversion downloads LibreOffice; main reports errors
+  let engineStatus: ReturnType<typeof statusToast> | null = null;
+  desktop.onEngineProgress?.(({ percent, error }) => {
+    if (error || (percent ?? 0) >= 100) {
+      engineStatus?.close();
+      engineStatus = null;
+      return;
+    }
+    const pct = percent == null ? '' : ` ${Math.floor(percent)}%`;
+    const msg = `Downloading the Office conversion engine (one time)…${pct}`;
+    if (engineStatus) engineStatus.update(msg);
+    else engineStatus = statusToast(msg);
+  });
   if (getPrefs().checkUpdates) scheduleUpdateCheck(toast);
 }
 
@@ -2841,7 +2977,7 @@ declare const __PAPERWING_VERSION__: string;
 declare const __PAPERWING_REPO__: string;
 
 // Inspection hook for the end-to-end tests (desktop/tests)
-(window as any).__acro = { viewer, tabs };
+(window as any).__acro = { viewer };
 
 hydrateIcons();
 renderRecommended();

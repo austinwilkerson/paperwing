@@ -57,7 +57,7 @@ monthly bill. Every feature is free, and your files never leave your computer.
 - Right rail with comments, bookmarks, page thumbnails, find, page navigation, rotate and zoom
 - **Light and dark themes** that follow your system automatically (neutral, Acrobat-style dark mode)
 
-**120+ tools from [BentoPDF](https://github.com/alam00000/bentopdf)**
+**100+ tools from [BentoPDF](https://github.com/alam00000/bentopdf)**
 
 - **Edit** — edit text & images, annotate, redact, watermarks, headers & footers, page numbers, Bates numbering, bookmarks, stamps, crop
 - **Convert** — PDF to Word, Excel, images, text, Markdown, JSON; Word, Excel, PowerPoint, images, ebooks, email, Markdown and 30+ formats to PDF

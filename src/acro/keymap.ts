@@ -9,6 +9,8 @@ export interface Shortcut {
   label: string;
   /** e.g. "Ctrl+Shift+S", "F3", "Ctrl+Plus", single keys like "U" */
   keys: string[];
+  /** Used instead of `keys` on macOS, where a combo clashes with the system */
+  macKeys?: string[];
   /** Single-key tool accelerators (can be turned off in Preferences) */
   singleKey?: boolean;
 }
@@ -139,7 +141,14 @@ export const SHORTCUTS: Shortcut[] = [
     keys: ['Shift+Ctrl+Minus'],
   },
   { id: 'fullScreen', group: 'View', label: 'Full screen', keys: ['Ctrl+L'] },
-  { id: 'readMode', group: 'View', label: 'Read mode', keys: ['Ctrl+H'] },
+  {
+    id: 'readMode',
+    group: 'View',
+    label: 'Read mode',
+    keys: ['Ctrl+H'],
+    // ⌘H hides the app on macOS
+    macKeys: ['Shift+Ctrl+H'],
+  },
   {
     id: 'navPane',
     group: 'View',
@@ -304,6 +313,11 @@ export function matchesCombo(
   return e.key === key;
 }
 
+/** The combos that trigger a shortcut on this platform */
+export function keysFor(s: Shortcut, mac: boolean): string[] {
+  return (mac && s.macKeys) || s.keys;
+}
+
 export function findShortcut(
   e: KeyInput,
   mac: boolean,
@@ -312,7 +326,7 @@ export function findShortcut(
   return SHORTCUTS.find(
     (s) =>
       (singleKeyEnabled || !s.singleKey) &&
-      s.keys.some((k) => matchesCombo(e, k, mac))
+      keysFor(s, mac).some((k) => matchesCombo(e, k, mac))
   );
 }
 

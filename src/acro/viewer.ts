@@ -86,13 +86,41 @@ export interface PageInfo {
   total: number;
 }
 
+/** PDFium's error code for a document that needs a password */
+const PASSWORD_REQUIRED = 4;
+
+/** open() was cancelled by the user (for example at the password prompt) */
+export class OpenCancelled extends Error {
+  constructor() {
+    super('Opening cancelled');
+    this.name = 'OpenCancelled';
+  }
+}
+
 export class Viewer {
   private container?: EmbedPdfContainer;
   private registry?: PluginRegistry;
   private ready?: Promise<void>;
   /** our tab id -> viewer document id */
   private docIds = new Map<string, string>();
-  private pending = new Map<string, (docId: string) => void>();
+  /** Documents still loading, by tab id */
+  private opening = new Map<
+    string,
+    {
+      docId: string;
+      resolve: () => void;
+      reject: (err: Error) => void;
+      /** the password prompt is showing */
+      prompting?: boolean;
+    }
+  >();
+  /** Asks for the password of a protected document; null cancels opening */
+  passwordPrompt?: (tabId: string, wrong: boolean) => Promise<string | null>;
+  /** Tabs closed while their document was loading */
+  private cancelled = new Set<string>();
+  /** The tab last shown, so it can get the viewer back after a discard */
+  private current?: string;
+  private seq = 0;
   private pageListeners = new Set<(tabId: string, info: PageInfo) => void>();
   private toolListeners = new Set<
     (tabId: string, toolId: string | null) => void
@@ -128,13 +156,37 @@ export class Viewer {
       const dm = this.cap('document-manager');
       dm.onDocumentOpened((doc: { id: string; name?: string }) => {
         const tabId = doc.name ?? '';
-        const resolve = this.pending.get(tabId);
-        if (!resolve) return;
-        this.pending.delete(tabId);
-        this.docIds.set(tabId, doc.id);
-        this.stripChrome(doc.id);
-        resolve(doc.id);
+        if (!this.opening.has(tabId)) return;
+        if (this.cancelled.has(tabId)) {
+          this.discard(doc.id);
+        } else {
+          this.docIds.set(tabId, doc.id);
+          this.stripChrome(doc.id);
+        }
+        this.settle(tabId);
       });
+      // Password-protected: ask, then retry. Corrupt or unreadable file:
+      // drop it and fail open()
+      dm.onDocumentError(
+        (e: { documentId: string; message?: string; code?: number }) => {
+          for (const [tabId, o] of this.opening) {
+            if (o.docId !== e.documentId) continue;
+            if (
+              e.code === PASSWORD_REQUIRED &&
+              this.passwordPrompt &&
+              !this.cancelled.has(tabId)
+            ) {
+              void this.askPassword(tabId, o.docId, false);
+              continue;
+            }
+            this.discard(e.documentId);
+            this.settle(
+              tabId,
+              new Error(e.message || 'Failed to load document')
+            );
+          }
+        }
+      );
 
       // Thumbnails/bookmarks live on the right in Acrobat, beside the rail
       const ui = this.cap('ui');
@@ -275,34 +327,109 @@ export class Viewer {
     return () => this.toolListeners.delete(fn);
   }
 
+  /** Resolves once the document is shown (or its tab was closed meanwhile);
+   *  rejects if the file can't be opened. */
   async open(tabId: string, buffer: ArrayBuffer): Promise<void> {
     await this.init();
-    const opened = new Promise<string>((r) => this.pending.set(tabId, r));
-    this.cap('document-manager').openDocumentBuffer({
-      buffer,
-      name: tabId,
-      autoActivate: true,
+    const docId = `pw-${++this.seq}`;
+    await new Promise<void>((resolve, reject) => {
+      this.opening.set(tabId, { docId, resolve, reject });
+      this.cap('document-manager')
+        .openDocumentBuffer({
+          buffer,
+          name: tabId,
+          documentId: docId,
+          autoActivate: true,
+        })
+        // Refused before loading starts (e.g. too many documents open)
+        .wait(
+          () => {},
+          (e: { reason?: { message?: string } }) =>
+            this.settle(tabId, new Error(e.reason?.message ?? 'Open failed'))
+        );
     });
-    await opened;
     // Apply the preferred zoom once the first page is laid out
-    setTimeout(() => this.applyDefaultZoom(tabId), 60);
+    if (this.docIds.has(tabId))
+      setTimeout(() => this.applyDefaultZoom(tabId), 60);
+  }
+
+  private async askPassword(tabId: string, docId: string, wrong: boolean) {
+    const o = this.opening.get(tabId);
+    if (!o || o.prompting) return;
+    o.prompting = true;
+    const password = await this.passwordPrompt!(tabId, wrong);
+    o.prompting = false;
+    if (this.opening.get(tabId) !== o) return;
+    if (password === null || this.cancelled.has(tabId)) {
+      this.discard(docId);
+      this.settle(tabId, new OpenCancelled());
+      return;
+    }
+    type LoadFailure = { reason?: { code?: number; message?: string } };
+    const failed = (e: LoadFailure) => {
+      if (this.opening.get(tabId) !== o) return;
+      // Wrong password: ask again
+      if (e.reason?.code === PASSWORD_REQUIRED) {
+        void this.askPassword(tabId, docId, true);
+        return;
+      }
+      this.discard(docId);
+      this.settle(
+        tabId,
+        new Error(e.reason?.message ?? 'Failed to load document')
+      );
+    };
+    // The retry is accepted at once; its load task says whether it worked
+    this.cap('document-manager')
+      .retryDocument(docId, { password })
+      .wait(
+        (r: { task?: { wait(ok: () => void, fail: typeof failed): void } }) =>
+          r.task?.wait(() => {}, failed),
+        failed
+      );
+  }
+
+  private settle(tabId: string, err?: Error) {
+    const o = this.opening.get(tabId);
+    if (!o) return;
+    this.opening.delete(tabId);
+    // A closed tab doesn't care whether its document failed
+    if (this.cancelled.delete(tabId) || !err) o.resolve();
+    else o.reject(err);
+  }
+
+  /** Close a document no tab shows, handing the viewer back to the current tab */
+  private discard(docId: string) {
+    // Not from inside the document manager's own event
+    setTimeout(() =>
+      this.cap('document-manager')
+        .closeDocument(docId)
+        .wait(
+          () => {
+            if (this.current) void this.activate(this.current);
+          },
+          () => {}
+        )
+    );
   }
 
   async activate(tabId: string) {
+    this.current = tabId;
     await this.init();
     const id = this.docIds.get(tabId);
     if (id) this.cap('document-manager').setActiveDocument(id);
   }
 
   close(tabId: string) {
+    if (this.opening.has(tabId)) {
+      // Still loading: close it once it has opened (see onDocumentOpened)
+      this.cancelled.add(tabId);
+      return;
+    }
     const id = this.docIds.get(tabId);
     if (!id || !this.registry) return;
     this.cap('document-manager').closeDocument(id);
     this.docIds.delete(tabId);
-  }
-
-  has(tabId: string) {
-    return this.docIds.has(tabId);
   }
 
   command(tabId: string, commandId: string) {

@@ -1,7 +1,7 @@
 > **About this file:** this is the original README of [BentoPDF](https://github.com/alam00000/bentopdf),
-> the open-source PDF engine that powers Paperwing. It is kept here unchanged (apart from link paths)
-> to credit the BentoPDF project and document the engine. For Paperwing itself, see the
-> [main README](../README.md).
+> the open-source project Paperwing is built on. It is kept here unchanged (apart from link paths)
+> to credit BentoPDF. Its self-hosting files and documentation aren't part of Paperwing; links to
+> them go to the BentoPDF repository. For Paperwing itself, see the [main README](../README.md).
 
 <p align="center"><img src="../public/images/favicon-no-bg.svg" width="80"></p>
 <h1 align="center">BentoPDF</h1>
@@ -308,7 +308,7 @@ BentoPDF is available in multiple languages:
 | Korean              | [![Korean](https://img.shields.io/badge/Complete-green?style=flat-square)](../public/locales/ko/common.json)                 |
 | Russian             | [![Russian](https://img.shields.io/badge/Complete-green?style=flat-square)](../public/locales/ru/common.json)                |
 
-Want to help translate BentoPDF into your language? Check out our [Translation Guide](bentopdf/TRANSLATION.md)!
+Want to help translate BentoPDF into your language? Check out our [Translation Guide](https://github.com/alam00000/bentopdf/blob/v2.8.8/TRANSLATION.md)!
 
 ---
 
@@ -826,7 +826,7 @@ The Self-Hosted build (the `bentopdf-simple` image, also called Simple Mode) is 
 
 The Commercial build (`ghcr.io/alam00000/bentopdf:latest`) is what powers bentopdf.com itself and is used by commercial license holders running public-facing deployments. It adds the hero, FAQ, testimonials, and footer that wouldn't make sense on an internal tool.
 
-If you're self-hosting BentoPDF for your team, organization, or as an internal tool, pull `ghcr.io/alam00000/bentopdf-simple:latest`. For more details, see [SIMPLE_MODE.md](bentopdf/SIMPLE_MODE.md).
+If you're self-hosting BentoPDF for your team, organization, or as an internal tool, pull `ghcr.io/alam00000/bentopdf-simple:latest`. For more details, see [SIMPLE_MODE.md](https://github.com/alam00000/bentopdf/blob/v2.8.8/SIMPLE_MODE.md).
 
 ### 🏬 Commercial Build
 
@@ -1005,7 +1005,7 @@ docker run -d -p 3000:8080 -e PUID=1000 -e PGID=1000 bentopdf-nonroot
 > [!NOTE]
 > The standard `Dockerfile` uses `nginx-unprivileged` (UID 101) and is recommended for most deployments. Use `Dockerfile.nonroot` only when you need a specific UID/GID.
 
-For detailed security configuration, see [SECURITY.md](bentopdf/SECURITY-docker.md).
+For detailed security configuration, see [SECURITY.md](https://github.com/alam00000/bentopdf/blob/v2.8.8/SECURITY.md).
 
 ### Digital Signature CORS Proxy (Required)
 
@@ -1153,7 +1153,7 @@ npm run release:minor
 npm run release:major
 ```
 
-For detailed release instructions, see [RELEASE.md](bentopdf/RELEASE.md).
+For detailed release instructions, see [RELEASE.md](https://github.com/alam00000/bentopdf/blob/v2.8.8/RELEASE.md).
 
 ### 🚀 Development Setup
 
