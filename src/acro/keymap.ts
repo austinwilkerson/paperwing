@@ -318,13 +318,15 @@ export function findShortcut(
 
 /** Human-readable combo for menus and the cheat sheet */
 export function formatCombo(combo: string, mac: boolean): string {
-  const nice = combo
+  let nice = combo
     .replace('Plus', '+')
     .replace('Minus', '−')
     .replace('Comma', ',')
     .replace('PageDown', 'Page Down')
     .replace('PageUp', 'Page Up');
   if (!mac) return nice;
+  // Document switching uses the Control key on macOS too
+  if (nice.endsWith('Tab')) nice = nice.replace(/Ctrl\+/g, '⌃');
   return nice
     .replace(/Shift\+/g, '⇧')
     .replace(/Alt\+/g, '⌥')

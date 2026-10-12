@@ -1,0 +1,1564 @@
+/*
+ * Paperwing theme for the PDF.js 5.4 viewer (public/pdfjs-viewer).
+ * Injected into the viewer iframe by src/reskin/frames.ts after viewer.css,
+ * so equal-specificity rules here win. Acrobat (Spectrum) look:
+ * white / near-black chrome, neutral greys, blue accent, pill buttons.
+ *
+ * Theme resolution mirrors the shell: light by default, dark when the OS
+ * is dark and the user has not forced light, or when data-theme="dark".
+ * frames.ts also sets html.style.colorScheme so PDF.js' own light-dark()
+ * values follow along; everything visible is remapped to --pw-* tokens.
+ */
+
+/* ------------------------------------------------------------------ */
+/* Tokens                                                              */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --pw-font: 'Source Sans 3', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  --pw-bg: #ffffff; /* toolbars, panels */
+  --pw-canvas: #f8f8f8; /* document area */
+  --pw-raised: #ffffff; /* menus, dialogs, popovers */
+  --pw-text: #222222;
+  --pw-text-2: #5e5e5e;
+  --pw-text-3: #8e8e8e;
+  --pw-border: #e1e1e1;
+  --pw-border-strong: #cacaca;
+  --pw-hover: #f0f0f0;
+  --pw-pressed: #e6e6e6;
+  --pw-accent: #3b63fb;
+  --pw-accent-hover: #274dea;
+  --pw-accent-pressed: #1f3fc9;
+  --pw-on-accent: #ffffff;
+  --pw-accent-text: #2c55f0; /* accent used as text on surfaces */
+  --pw-selected-bg: #e9eeff;
+  --pw-selected-hover-bg: #dde5ff;
+  --pw-field-bg: #ffffff;
+  --pw-field-border: #cacaca;
+  --pw-field-border-hover: #a8a8a8;
+  --pw-field-disabled: #f4f4f4;
+  --pw-signature-bg: #fafafa;
+  --pw-scrim: rgb(0 0 0 / 0.32);
+  --pw-shadow: 0 4px 16px rgb(0 0 0 / 0.12), 0 1px 3px rgb(0 0 0 / 0.08);
+  --pw-shadow-dialog: 0 8px 32px rgb(0 0 0 / 0.18), 0 2px 6px rgb(0 0 0 / 0.08);
+  --pw-page-shadow-1: rgb(0 0 0 / 0.1);
+  --pw-page-shadow-2: rgb(0 0 0 / 0.16);
+  --pw-negative: #d31510;
+  --pw-negative-bg: #ffebe7;
+  --pw-scrollbar: #c4c4c4;
+  --pw-icon-filter: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --pw-bg: #222222;
+    --pw-canvas: #141414;
+    --pw-raised: #2a2a2a;
+    --pw-text: #ededed;
+    --pw-text-2: #b4b4b4;
+    --pw-text-3: #8a8a8a;
+    --pw-border: #333333;
+    --pw-border-strong: #4a4a4a;
+    --pw-hover: #2f2f2f;
+    --pw-pressed: #3a3a3a;
+    --pw-accent: #5c7cff;
+    --pw-accent-hover: #7590ff;
+    --pw-accent-pressed: #8ba2ff;
+    --pw-on-accent: #ffffff;
+    --pw-accent-text: #8ca1ff;
+    --pw-selected-bg: rgb(92 124 255 / 0.2);
+    --pw-selected-hover-bg: rgb(92 124 255 / 0.28);
+    --pw-field-bg: #1c1c1c;
+    --pw-field-border: #4a4a4a;
+    --pw-field-border-hover: #6a6a6a;
+    --pw-field-disabled: #262626;
+    --pw-signature-bg: #1c1c1c;
+    --pw-scrim: rgb(0 0 0 / 0.55);
+    --pw-shadow: 0 4px 16px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.04);
+    --pw-shadow-dialog:
+      0 8px 32px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.05);
+    --pw-page-shadow-1: rgb(0 0 0 / 0.5);
+    --pw-page-shadow-2: rgb(0 0 0 / 0.6);
+    --pw-negative: #ff6b5e;
+    --pw-negative-bg: #4a1f1c;
+    --pw-scrollbar: #4d4d4d;
+  }
+}
+
+:root[data-theme='dark'] {
+  --pw-bg: #222222;
+  --pw-canvas: #141414;
+  --pw-raised: #2a2a2a;
+  --pw-text: #ededed;
+  --pw-text-2: #b4b4b4;
+  --pw-text-3: #8a8a8a;
+  --pw-border: #333333;
+  --pw-border-strong: #4a4a4a;
+  --pw-hover: #2f2f2f;
+  --pw-pressed: #3a3a3a;
+  --pw-accent: #5c7cff;
+  --pw-accent-hover: #7590ff;
+  --pw-accent-pressed: #8ba2ff;
+  --pw-on-accent: #ffffff;
+  --pw-accent-text: #8ca1ff;
+  --pw-selected-bg: rgb(92 124 255 / 0.2);
+  --pw-selected-hover-bg: rgb(92 124 255 / 0.28);
+  --pw-field-bg: #1c1c1c;
+  --pw-field-border: #4a4a4a;
+  --pw-field-border-hover: #6a6a6a;
+  --pw-field-disabled: #262626;
+  --pw-signature-bg: #1c1c1c;
+  --pw-scrim: rgb(0 0 0 / 0.55);
+  --pw-shadow: 0 4px 16px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.04);
+  --pw-shadow-dialog:
+    0 8px 32px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.05);
+  --pw-page-shadow-1: rgb(0 0 0 / 0.5);
+  --pw-page-shadow-2: rgb(0 0 0 / 0.6);
+  --pw-negative: #ff6b5e;
+  --pw-negative-bg: #4a1f1c;
+  --pw-scrollbar: #4d4d4d;
+}
+
+/* ------------------------------------------------------------------ */
+/* PDF.js variable remap (:root)                                       */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --toolbar-height: 40px;
+  --toolbar-vertical-padding: 4px;
+  --toolbar-horizontal-padding: 6px;
+  --toolbar-icon-opacity: 1;
+  --doorhanger-icon-opacity: 1;
+  --sidebar-width: 220px;
+
+  --main-color: var(--pw-text);
+  --body-bg-color: var(--pw-canvas);
+  --progressBar-color: var(--pw-accent);
+  --progressBar-bg-color: var(--pw-border);
+  --progressBar-blend-color: var(--pw-selected-bg);
+  --scrollbar-color: var(--pw-scrollbar);
+  --scrollbar-bg-color: transparent;
+  --toolbar-icon-bg-color: var(--pw-text);
+  --toolbar-icon-hover-bg-color: var(--pw-text);
+  --sidebar-narrow-bg-color: var(--pw-bg);
+  --sidebar-toolbar-bg-color: var(--pw-bg);
+  --toolbar-bg-color: var(--pw-bg);
+  --toolbar-border-color: var(--pw-border);
+  --toolbar-box-shadow: none;
+  --toolbar-border-bottom: 1px solid var(--pw-border);
+  --toolbarSidebar-box-shadow: none;
+  --toolbarSidebar-border-bottom: 1px solid var(--pw-border);
+  --button-hover-color: var(--pw-hover);
+  --toggled-btn-color: var(--pw-accent-text);
+  --toggled-btn-bg-color: var(--pw-selected-bg);
+  --toggled-hover-active-btn-color: var(--pw-selected-hover-bg);
+  --toggled-hover-btn-outline: none;
+  --dropdown-btn-bg-color: var(--pw-field-bg);
+  --dropdown-btn-border: 1px solid var(--pw-field-border);
+  --separator-color: var(--pw-border);
+  --field-color: var(--pw-text);
+  --field-bg-color: var(--pw-field-bg);
+  --field-border-color: var(--pw-field-border);
+  --treeitem-color: var(--pw-text);
+  --treeitem-bg-color: var(--pw-hover);
+  --treeitem-hover-color: var(--pw-text);
+  --treeitem-selected-color: var(--pw-text);
+  --treeitem-selected-bg-color: var(--pw-selected-bg);
+  --thumbnail-hover-color: var(--pw-border-strong);
+  --thumbnail-selected-color: var(--pw-accent);
+  --doorhanger-bg-color: var(--pw-raised);
+  --doorhanger-border-color: var(--pw-border);
+  --doorhanger-hover-color: var(--pw-text);
+  --doorhanger-separator-color: var(--pw-border);
+  --dialog-button-border: 2px solid var(--pw-text);
+  --dialog-button-bg-color: transparent;
+  --dialog-button-hover-bg-color: var(--pw-hover);
+  --dialog-button-hover-color: var(--pw-text);
+  --focus-ring-color: var(--pw-accent);
+  --focus-ring-outline: 2px solid var(--pw-accent);
+
+  --signature-bg: var(--pw-signature-bg);
+  --signature-hover-bg: var(--pw-hover);
+  --button-signature-bg: transparent;
+  --button-signature-color: var(--pw-text);
+  --button-signature-hover-bg: var(--pw-hover);
+  --button-signature-active-bg: var(--pw-pressed);
+
+  /* Acrobat-like selection outline for editors on the page */
+  --outline-color: var(--pw-accent);
+  --hover-outline-color: var(--pw-accent);
+  --focus-outline-color: var(--pw-accent);
+
+  color-scheme: light dark;
+  accent-color: var(--pw-accent);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* ------------------------------------------------------------------ */
+/* Typography                                                          */
+/* ------------------------------------------------------------------ */
+
+body,
+button,
+input:not(#addSignatureTypeInput),
+select,
+textarea,
+dialog,
+.dialog,
+#sidebarContainer,
+#toolbarContainer,
+#sidebarContainer :is(input, button, select),
+:is(#toolbarContainer #toolbarViewer) input,
+.toolbarButton,
+.toolbarLabel,
+.dropdownToolbarButton > select,
+.editorParamsLabel,
+#editorUndoBar,
+.messageBar,
+.treeItem > a {
+  font-family: var(--pw-font) !important;
+}
+
+/* Signature input keeps its handwriting fonts (set inline by JS too) */
+#addSignatureTypeInput {
+  font-family:
+    'Brush script', 'Apple Chancery', 'Segoe script', 'Freestyle Script',
+    'Palace Script MT', 'Brush Script MT', cursive, serif;
+}
+
+body {
+  background-color: var(--pw-canvas);
+  color: var(--pw-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ------------------------------------------------------------------ */
+/* Top toolbar                                                         */
+/* ------------------------------------------------------------------ */
+
+#toolbarContainer {
+  background-color: var(--pw-bg);
+  border-bottom: 1px solid var(--pw-border);
+  box-shadow: none;
+}
+
+#toolbarContainer #loadingBar {
+  height: 2px;
+  border-bottom: none;
+}
+
+.toolbarHorizontalGroup {
+  gap: 2px;
+}
+
+.toolbarButton,
+.toolbarButtonWithContainer {
+  height: 32px;
+  width: 32px;
+  aspect-ratio: auto;
+}
+
+.toolbarButton {
+  border-radius: 4px;
+  color: var(--pw-text);
+  transition: background-color 0.12s ease;
+}
+
+.toolbarButton::before {
+  opacity: 1;
+  width: 18px;
+  height: 18px;
+  background-color: var(--pw-text);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.toolbarButton:is(:hover, :focus-visible) {
+  background-color: var(--pw-hover);
+}
+
+.toolbarButton:is(:hover, :focus-visible)::before {
+  background-color: var(--pw-text);
+}
+
+.toolbarButton:active {
+  background-color: var(--pw-pressed);
+}
+
+.toolbarButton:focus-visible {
+  outline: 2px solid var(--pw-accent);
+  outline-offset: -2px;
+}
+
+.toolbarButton.toggled,
+.toolbarButton[aria-checked='true'],
+.toolbarButton[aria-expanded='true'] {
+  background-color: var(--pw-selected-bg);
+  color: var(--pw-accent-text);
+}
+
+.toolbarButton.toggled::before,
+.toolbarButton[aria-checked='true']::before,
+.toolbarButton[aria-expanded='true']::before,
+.toolbarButton.toggled:is(:hover, :focus-visible)::before,
+.toolbarButton[aria-checked='true']:is(:hover, :focus-visible)::before,
+.toolbarButton[aria-expanded='true']:is(:hover, :focus-visible)::before {
+  background-color: var(--pw-accent-text);
+}
+
+.toolbarButton.toggled:hover,
+.toolbarButton[aria-checked='true']:hover,
+.toolbarButton[aria-expanded='true']:hover {
+  background-color: var(--pw-selected-hover-bg);
+}
+
+.toolbarButton.toggled:hover:active {
+  background-color: var(--pw-selected-hover-bg);
+}
+
+.toolbarButton:is([disabled='disabled'], [disabled]) {
+  opacity: 0.38;
+}
+
+.splitToolbarButtonSeparator {
+  display: none;
+}
+
+.verticalToolbarSeparator {
+  height: 20px;
+  margin-inline: 6px;
+  border-left-color: var(--pw-border);
+}
+
+.toolbarLabel {
+  color: var(--pw-text-2);
+  font-size: 13px;
+}
+
+/* Page number and other toolbar fields */
+.toolbarField {
+  box-sizing: border-box;
+  height: 28px;
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--pw-field-border);
+  background-color: var(--pw-field-bg);
+  color: var(--pw-text);
+  font-size: 13px;
+  line-height: 18px;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.toolbarField:hover {
+  border-color: var(--pw-field-border-hover);
+}
+
+.toolbarField:focus,
+.toolbarField:focus-visible {
+  border-color: var(--pw-accent);
+  box-shadow: 0 0 0 1px var(--pw-accent);
+  outline: none;
+}
+
+#pageNumber {
+  width: 44px;
+  text-align: center;
+}
+
+#numPages.toolbarLabel {
+  padding-inline: 6px 2px;
+}
+
+/* Zoom dropdown: an Acrobat-style picker field */
+.dropdownToolbarButton {
+  min-width: 128px;
+  height: 28px;
+  border: 1px solid var(--pw-field-border);
+  border-radius: 4px;
+  background-color: var(--pw-field-bg);
+  overflow: hidden;
+}
+
+.dropdownToolbarButton:hover {
+  border-color: var(--pw-field-border-hover);
+  background-color: var(--pw-field-bg);
+}
+
+.dropdownToolbarButton:focus-within {
+  border-color: var(--pw-accent);
+  box-shadow: 0 0 0 1px var(--pw-accent);
+}
+
+.dropdownToolbarButton > select {
+  height: 26px;
+  font-size: 13px;
+  color: var(--pw-text);
+  background-color: var(--pw-field-bg);
+  padding-inline: 8px 30px;
+}
+
+:is(.dropdownToolbarButton > select):is(:hover, :focus-visible) {
+  background-color: var(--pw-field-bg);
+  color: var(--pw-text);
+}
+
+:is(.dropdownToolbarButton > select) > option {
+  background: var(--pw-raised);
+  color: var(--pw-text);
+}
+
+.dropdownToolbarButton::after,
+.dropdownToolbarButton:is(:hover, :focus-visible, :active)::after {
+  background-color: var(--pw-text-2);
+  inset-inline-end: 8px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Popovers: secondary menu, editor params, find bar, signature list   */
+/* ------------------------------------------------------------------ */
+
+.doorHanger,
+.doorHangerRight {
+  border-radius: 8px;
+  border: 1px solid var(--pw-border);
+  background-color: var(--pw-raised);
+  box-shadow: var(--pw-shadow);
+  inset-block-start: calc(100% + 6px);
+}
+
+/* Acrobat popovers have no arrow */
+:is(.doorHanger, .doorHangerRight)::before,
+:is(.doorHanger, .doorHangerRight)::after {
+  display: none;
+}
+
+.doorHangerRight {
+  inset-inline-end: 0;
+}
+
+.doorHanger {
+  inset-inline-start: 0;
+}
+
+.toolbarButtonWithContainer .menu {
+  padding-block: 6px;
+}
+
+.toolbarButtonWithContainer .menuContainer {
+  padding-inline: 6px;
+  gap: 1px;
+}
+
+.toolbarButton.labeled {
+  width: 100%;
+  height: auto;
+  min-height: 32px;
+  padding-inline: 10px 12px;
+  gap: 10px;
+  border-radius: 4px;
+  color: var(--pw-text);
+  font-size: 14px;
+}
+
+.toolbarButton.labeled::before {
+  width: 16px;
+  height: 16px;
+}
+
+.toolbarButton.labeled:is(:hover, :focus-visible) {
+  background-color: var(--pw-hover);
+  color: var(--pw-text);
+}
+
+.toolbarButton.labeled.toggled,
+.toolbarButton.labeled[aria-checked='true'] {
+  background-color: var(--pw-selected-bg);
+  color: var(--pw-text);
+}
+
+.toolbarButton.labeled > span {
+  color: inherit;
+}
+
+.horizontalToolbarSeparator {
+  width: auto;
+  margin: 6px 4px;
+  border-top-color: var(--pw-border);
+}
+
+#secondaryToolbar {
+  width: 240px;
+}
+
+/* Find bar */
+#findbar {
+  background-color: var(--pw-raised);
+  padding: 6px;
+  gap: 4px;
+  min-width: 320px;
+}
+
+#findbar > * {
+  height: 32px;
+}
+
+:is(#findbar #findInputContainer) #findInput {
+  width: 200px;
+  height: 28px;
+  padding: 4px 8px;
+}
+
+[data-status='notFound']:is(:is(#findbar #findInputContainer) #findInput) {
+  background-color: var(--pw-negative-bg);
+  border-color: var(--pw-negative);
+  color: var(--pw-text);
+}
+
+.toggleButton {
+  border-radius: 4px;
+  padding-inline: 8px;
+  color: var(--pw-text);
+}
+
+.toggleButton:has(> input:checked) {
+  color: var(--pw-accent-text);
+  background-color: var(--pw-selected-bg);
+}
+
+.toggleButton:is(:hover, :has(> input:focus-visible)) {
+  color: var(--pw-text);
+  background-color: var(--pw-hover);
+}
+
+.toggleButton:has(> input:checked):hover {
+  color: var(--pw-accent-text);
+  background-color: var(--pw-selected-hover-bg);
+}
+
+.toggleButton > label {
+  font-size: 13px;
+}
+
+:is(#findbar #findbarMessageContainer) #findResultsCount {
+  height: auto;
+  align-self: center;
+  background-color: var(--pw-hover);
+  color: var(--pw-text-2);
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+[data-status='notFound']:is(#findbar #findbarMessageContainer #findMsg) {
+  color: var(--pw-negative);
+}
+
+/* Editor param popovers (FreeText / Ink / Highlight) */
+.toolbarButtonWithContainer .editorParamsToolbar {
+  --editor-toolbar-min-width: 240px;
+}
+
+:is(.toolbarButtonWithContainer .editorParamsToolbar) .editorParamsLabel {
+  color: var(--pw-text);
+  font-size: 14px;
+}
+
+:is(.toolbarButtonWithContainer .editorParamsToolbar)
+  button:is(:hover, :focus-visible)
+  .editorParamsLabel {
+  color: var(--pw-text);
+}
+
+:is(.toolbarButtonWithContainer .editorParamsToolbar)
+  .editorParamsToolbarContainer {
+  padding: 12px 14px;
+  gap: 6px;
+}
+
+:is(
+    :is(.toolbarButtonWithContainer .editorParamsToolbar)
+      .editorParamsToolbarContainer
+  )
+  > .editorParamsSetter {
+  min-height: 32px;
+  gap: 16px;
+}
+
+/* Native colour inputs as Acrobat swatches */
+input[type='color'] {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  padding: 3px;
+  border: 1px solid var(--pw-field-border);
+  border-radius: 4px;
+  background: var(--pw-field-bg);
+  cursor: pointer;
+}
+
+input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+input[type='color']::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+input[type='color']::-moz-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+input[type='color']:hover {
+  border-color: var(--pw-field-border-hover);
+}
+
+:is(
+    :is(.toolbarButtonWithContainer .editorParamsToolbar)
+      .editorParamsToolbarContainer
+  )
+  .editorParamsColor {
+  width: 28px;
+  height: 28px;
+  padding: 3px;
+}
+
+/* Range sliders: thin track, accent fill, white knob */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 16px;
+  background: transparent;
+  accent-color: var(--pw-accent);
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 1px;
+  background-color: var(--pw-border-strong) !important;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--pw-text);
+  background-color: var(--pw-raised) !important;
+  box-sizing: border-box;
+}
+
+input[type='range']:hover::-webkit-slider-thumb {
+  border-color: var(--pw-accent);
+}
+
+input[type='range']::-moz-range-track {
+  height: 2px;
+  background-color: var(--pw-border-strong) !important;
+}
+
+input[type='range']::-moz-range-progress {
+  height: 2px;
+  background-color: var(--pw-text) !important;
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--pw-text);
+  background-color: var(--pw-raised) !important;
+}
+
+:is(
+    :is(.toolbarButtonWithContainer .editorParamsToolbar)
+      .editorParamsToolbarContainer
+  )
+  .editorParamsSlider {
+  width: 110px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Sidebar (thumbnails / outline)                                      */
+/* ------------------------------------------------------------------ */
+
+#sidebarContainer {
+  background-color: var(--pw-bg);
+  border-inline-end: 1px solid var(--pw-border);
+  border-top: none;
+}
+
+#toolbarSidebar {
+  background-color: var(--pw-bg);
+  box-shadow: none;
+  border-bottom: 1px solid var(--pw-border);
+  padding: 4px 6px;
+}
+
+#sidebarViewButtons.toggled {
+  background: transparent;
+}
+
+#sidebarContent {
+  box-shadow: none;
+  background-color: var(--pw-bg);
+}
+
+#thumbnailView {
+  padding-top: 12px;
+}
+
+.thumbnail {
+  border-width: 3px;
+  border-radius: 4px;
+  margin: 0 auto 14px;
+  float: none;
+  padding: 0;
+}
+
+#thumbnailView > a {
+  display: block;
+  text-align: center;
+}
+
+.thumbnailImage {
+  opacity: 1;
+  box-shadow:
+    0 0 0 1px var(--pw-border),
+    0 1px 3px var(--pw-page-shadow-1);
+}
+
+a:focus > .thumbnail,
+.thumbnail:hover {
+  border-color: var(--pw-border-strong);
+}
+
+.thumbnail.selected {
+  border-color: var(--pw-accent) !important;
+}
+
+.thumbnail:not([data-loaded]) > .thumbnailImage {
+  border-color: var(--pw-border-strong);
+  background-color: var(--pw-field-bg);
+}
+
+.treeItem > a {
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 14px;
+  line-height: 18px;
+}
+
+.treeItemToggler::before {
+  background-color: var(--pw-text-2);
+}
+
+/* ------------------------------------------------------------------ */
+/* Document canvas and pages                                           */
+/* ------------------------------------------------------------------ */
+
+#viewerContainer {
+  background-color: var(--pw-canvas);
+}
+
+.pdfViewer .page::before {
+  /* Pages keep their 9px transparent border, which clips an outer
+     box-shadow, so the shadow lives on a pseudo-element behind the page. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 1px var(--pw-page-shadow-1),
+    0 2px 8px var(--pw-page-shadow-2);
+}
+
+/* Form fields on the page (form-filler) */
+.annotationLayer {
+  --input-focus-border-color: var(--pw-accent);
+  --input-focus-outline: 1px solid var(--pw-accent);
+  --input-hover-border-color: var(--pw-accent);
+  --link-outline: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Dialogs                                                             */
+/* ------------------------------------------------------------------ */
+
+dialog,
+.dialog {
+  --dialog-bg-color: var(--pw-raised);
+  --dialog-border-color: var(--pw-raised);
+  --dialog-shadow: var(--pw-shadow-dialog);
+  --hover-filter: none;
+  --text-primary-color: var(--pw-text);
+  --text-secondary-color: var(--pw-text-2);
+  --link-fg-color: var(--pw-accent-text);
+  --link-hover-fg-color: var(--pw-accent-hover);
+  --separator-color: var(--pw-border);
+  --textarea-border-color: var(--pw-field-border);
+  --textarea-bg-color: var(--pw-field-bg);
+  --textarea-fg-color: var(--pw-text);
+  --radio-bg-color: var(--pw-field-bg);
+  --radio-border-color: var(--pw-field-border-hover);
+  --radio-checked-bg-color: var(--pw-field-bg);
+  --radio-checked-border-color: var(--pw-accent);
+  --input-text-bg-color: var(--pw-field-bg);
+  --input-text-fg-color: var(--pw-text);
+
+  --button-secondary-bg-color: transparent;
+  --button-secondary-fg-color: var(--pw-text);
+  --button-secondary-border-color: var(--pw-text);
+  --button-secondary-hover-bg-color: var(--pw-hover);
+  --button-secondary-hover-fg-color: var(--pw-text);
+  --button-secondary-hover-border-color: var(--pw-text);
+  --button-secondary-active-bg-color: var(--pw-pressed);
+  --button-secondary-active-fg-color: var(--pw-text);
+  --button-secondary-active-border-color: var(--pw-text);
+  --button-secondary-disabled-bg-color: transparent;
+  --button-secondary-disabled-border-color: var(--pw-text-3);
+  --button-secondary-disabled-fg-color: var(--pw-text-3);
+
+  --button-primary-bg-color: var(--pw-accent);
+  --button-primary-fg-color: var(--pw-on-accent);
+  --button-primary-border-color: var(--pw-accent);
+  --button-primary-hover-bg-color: var(--pw-accent-hover);
+  --button-primary-hover-fg-color: var(--pw-on-accent);
+  --button-primary-hover-border-color: var(--pw-accent-hover);
+  --button-primary-active-bg-color: var(--pw-accent-pressed);
+  --button-primary-active-fg-color: var(--pw-on-accent);
+  --button-primary-active-border-color: var(--pw-accent-pressed);
+  --button-primary-disabled-bg-color: var(--pw-pressed);
+  --button-primary-disabled-border-color: var(--pw-pressed);
+  --button-primary-disabled-fg-color: var(--pw-text-3);
+  --button-disabled-opacity: 1;
+}
+
+dialog {
+  padding: 20px 24px;
+  border: 1px solid var(--pw-border);
+  border-radius: 8px;
+  background-color: var(--pw-raised);
+  color: var(--pw-text);
+  box-shadow: var(--pw-shadow-dialog);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.dialog {
+  border-radius: 8px;
+  border: 1px solid var(--pw-border);
+  background: var(--pw-raised);
+  color: var(--pw-text);
+  box-shadow: var(--pw-shadow-dialog);
+  font-size: 14px;
+  line-height: 1.45;
+  padding: 24px;
+}
+
+dialog::backdrop {
+  background-color: var(--pw-scrim);
+}
+
+:is(.dialog .mainContainer) .title {
+  gap: 12px;
+}
+
+:is(:is(.dialog .mainContainer) .title) > span,
+:is(.dialog .mainContainer) .title.title {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--pw-text);
+}
+
+:is(.dialog .mainContainer) .dialogSeparator {
+  border-top-color: var(--pw-border);
+  margin-block: 8px;
+}
+
+:is(.dialog .mainContainer) .dialogButtonsGroup {
+  gap: 12px;
+}
+
+/* Pill buttons: primary = accent fill, secondary = 2px outline */
+:is(.dialog .mainContainer)
+  button:not(:is(.toggle-button, .closeButton, .clearInputButton)) {
+  height: 32px;
+  min-width: 72px;
+  padding: 0 16px;
+  border-radius: 16px;
+  border: 2px solid;
+  font-family: var(--pw-font);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+:is(.dialog .mainContainer) a {
+  color: var(--pw-accent-text);
+}
+
+:is(.dialog .mainContainer) textarea {
+  border-radius: 4px;
+  border-color: var(--pw-field-border);
+  background: var(--pw-field-bg);
+  color: var(--pw-text);
+  padding: 6px 10px;
+}
+
+:is(:is(.dialog .mainContainer) textarea):focus,
+:is(.dialog .mainContainer) input[type='text']:focus {
+  outline: 2px solid var(--pw-accent);
+  outline-offset: -1px;
+  border-color: var(--pw-accent);
+}
+
+:is(.dialog .mainContainer) input[type='text'],
+#documentPropertiesDialog input,
+#passwordDialog input {
+  box-sizing: border-box;
+  height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--pw-field-border);
+  border-radius: 4px;
+  background-color: var(--pw-field-bg);
+  color: var(--pw-text);
+  font-size: 14px;
+}
+
+:is(.dialog .mainContainer) input[type='text']:hover {
+  border-color: var(--pw-field-border-hover);
+}
+
+/* Legacy dialogs (document properties, password, print progress) */
+.dialogButton {
+  height: 32px;
+  min-width: 72px;
+  padding: 0 16px;
+  margin: 4px !important;
+  border-radius: 16px;
+  border: 2px solid var(--pw-text) !important;
+  background-color: transparent;
+  color: var(--pw-text);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dialogButton:is(:hover, :focus-visible) {
+  background-color: var(--pw-hover);
+}
+
+.dialogButton:is(:hover, :focus-visible) > span {
+  color: var(--pw-text);
+}
+
+#passwordSubmit.dialogButton,
+#documentPropertiesClose.dialogButton {
+  background-color: var(--pw-accent);
+  border-color: var(--pw-accent) !important;
+  color: var(--pw-on-accent);
+}
+
+#passwordSubmit.dialogButton:is(:hover, :focus-visible),
+#documentPropertiesClose.dialogButton:is(:hover, :focus-visible) {
+  background-color: var(--pw-accent-hover);
+  border-color: var(--pw-accent-hover) !important;
+}
+
+#passwordSubmit.dialogButton > span,
+#documentPropertiesClose.dialogButton > span,
+#passwordSubmit.dialogButton:is(:hover, :focus-visible) > span,
+#documentPropertiesClose.dialogButton:is(:hover, :focus-visible) > span {
+  color: var(--pw-on-accent);
+}
+
+dialog .separator {
+  border-top-color: var(--pw-border);
+}
+
+dialog :link {
+  color: var(--pw-accent-text);
+}
+
+#documentPropertiesDialog .row > span {
+  color: var(--pw-text-2);
+}
+
+#documentPropertiesDialog .row > * {
+  padding-block: 3px;
+}
+
+/* Toggle switches (alt-text settings, highlight "show all") */
+.toggle-button {
+  --button-background-color: var(--pw-pressed);
+  --button-background-color-hover: var(--pw-hover);
+  --button-background-color-active: var(--pw-pressed);
+  --color-accent-primary: var(--pw-accent);
+  --color-accent-primary-hover: var(--pw-accent-hover);
+  --color-accent-primary-active: var(--pw-accent-pressed);
+  --border-color-interactive: var(--pw-text-2);
+  --border-color-interactive-hover: var(--pw-text);
+  --border-color-interactive-active: var(--pw-text);
+  --color-canvas: var(--pw-raised);
+  --background-color-canvas: var(--pw-raised);
+  --toggle-background-color: transparent;
+  --toggle-background-color-hover: var(--pw-hover);
+  --toggle-background-color-active: var(--pw-pressed);
+  --toggle-background-color-pressed: var(--pw-accent);
+  --toggle-background-color-pressed-hover: var(--pw-accent-hover);
+  --toggle-background-color-pressed-active: var(--pw-accent-pressed);
+  --toggle-border-color: var(--pw-text-2);
+  --toggle-border-color-hover: var(--pw-text);
+  --toggle-border-color-active: var(--pw-text);
+  --toggle-dot-background-color: var(--pw-text-2);
+  --toggle-dot-background-color-hover: var(--pw-text);
+  --toggle-dot-background-color-active: var(--pw-text);
+  --toggle-dot-background-color-on-pressed: #ffffff;
+}
+
+/* Message bars (errors inside dialogs) */
+.messageBar,
+:is(.dialog .mainContainer) .messageBar {
+  --message-bar-bg-color: var(--pw-negative-bg);
+  --message-bar-fg-color: var(--pw-text);
+  --message-bar-border-color: transparent;
+  --message-bar-icon-color: var(--pw-negative);
+  --message-bar-close-button-color: var(--pw-text);
+  --message-bar-close-button-hover-bg-color: rgb(0 0 0 / 0.08);
+  --message-bar-close-button-active-bg-color: rgb(0 0 0 / 0.14);
+  --message-bar-close-button-focus-bg-color: rgb(0 0 0 / 0.08);
+}
+
+/* Undo bar shown after deleting an annotation */
+#editorUndoBar {
+  --text-primary-color: var(--pw-text);
+  --message-bar-bg-color: var(--pw-raised);
+  --message-bar-fg-color: var(--pw-text);
+  --message-bar-border-color: var(--pw-border);
+  --message-bar-icon-color: var(--pw-text-2);
+  --undo-button-bg-color: transparent;
+  --undo-button-bg-color-hover: var(--pw-hover);
+  --undo-button-bg-color-active: var(--pw-pressed);
+  --undo-button-border: 2px solid var(--pw-text);
+  --undo-button-fg-color: var(--pw-text);
+  --undo-button-fg-color-hover: var(--pw-text);
+  --undo-button-fg-color-active: var(--pw-text);
+  border-radius: 8px;
+  box-shadow: var(--pw-shadow);
+}
+
+#editorUndoBar #editorUndoBarUndoButton {
+  border-radius: 16px;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------ */
+/* Add a signature dialog                                              */
+/* ------------------------------------------------------------------ */
+
+.signatureDialog {
+  --primary-color: var(--pw-text);
+  --border-color: var(--pw-field-border);
+  --open-link-fg: var(--pw-accent-text);
+  --open-link-hover-fg: var(--pw-accent-hover);
+  padding: 24px 0 20px;
+}
+
+.signatureDialog .mainContainer {
+  gap: 16px;
+}
+
+.signatureDialog .mainContainer > .title {
+  padding-inline: 24px;
+}
+
+#addSignatureDialog {
+  --dialog-bg-color: var(--pw-raised);
+  --bg-hover: var(--pw-hover);
+  --primary-color: var(--pw-text);
+  --secondary-color: var(--pw-text-2);
+  --tab-top-line-active-color: transparent;
+  --tab-top-line-active-hover-color: transparent;
+  --tab-top-line-hover-color: transparent;
+  --tab-top-line-inactive-color: transparent;
+  --tab-bottom-line-active-color: var(--pw-accent);
+  --tab-bottom-line-hover-color: var(--pw-border-strong);
+  --tab-bottom-line-inactive-color: transparent;
+  --tab-bg: transparent;
+  --tab-bg-active-color: transparent;
+  --tab-bg-active-hover-color: transparent;
+  --tab-bg-hover: transparent;
+  --tab-panel-border: 1px solid var(--pw-border);
+  --tab-panel-border-radius: 6px;
+  --tab-text-color: var(--pw-text-2);
+  --tab-text-active-color: var(--pw-text);
+  --tab-text-active-hover-color: var(--pw-text);
+  --tab-text-hover-color: var(--pw-text);
+  --signature-placeholder-color: var(--pw-text-3);
+  --signature-draw-placeholder-color: var(--pw-text-3);
+  --signature-color: var(--pw-text);
+  --clear-signature-button-border-width: 0;
+  --clear-signature-button-color: var(--pw-text);
+  --clear-signature-button-bg: transparent;
+  --clear-signature-button-bg-hover: var(--pw-hover);
+  --clear-signature-button-bg-active: var(--pw-pressed);
+  --clear-signature-button-bg-focus: var(--pw-hover);
+  --clear-signature-button-bg-disabled: transparent;
+  --save-warning-color: var(--pw-text-2);
+  --thickness-bg: var(--pw-raised);
+  --thickness-label-color: var(--pw-text);
+  --thickness-slider-color: var(--pw-text);
+  --thickness-border: 1px solid var(--pw-border);
+  --signature-bg: var(--pw-signature-bg);
+  --signature-hover-bg: var(--pw-hover);
+}
+
+/* Text tabs with an underline, like Acrobat's dialog tabs */
+:is(#addSignatureDialog .mainContainer) [role='tablist'] {
+  gap: 24px;
+  padding-inline: 24px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--pw-border);
+}
+
+:is(:is(#addSignatureDialog .mainContainer) [role='tablist']) > [role='tab'] {
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 2px;
+  margin-bottom: -1px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--pw-text-2);
+  font-family: var(--pw-font);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+:is(
+  :is(:is(#addSignatureDialog .mainContainer) [role='tablist']) > [role='tab']
+):hover {
+  border-block-start-width: 0;
+  border-bottom: 2px solid var(--pw-border-strong);
+  background: transparent;
+  color: var(--pw-text);
+}
+
+[aria-selected='true']:is(
+  :is(:is(#addSignatureDialog .mainContainer) [role='tablist']) > [role='tab']
+),
+[aria-selected='true']:is(
+    :is(:is(#addSignatureDialog .mainContainer) [role='tablist']) > [role='tab']
+  ):hover {
+  border-block-start-width: 0;
+  border-bottom: 2px solid var(--pw-accent);
+  background: transparent;
+  color: var(--pw-text);
+  font-weight: 700;
+}
+
+:is(
+  :is(:is(#addSignatureDialog .mainContainer) [role='tablist']) > [role='tab']
+):focus-visible {
+  outline: 2px solid var(--pw-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+:is(#addSignatureDialog .mainContainer) #addSignatureActionContainer {
+  padding-inline: 24px;
+  gap: 14px;
+}
+
+:is(:is(#addSignatureDialog .mainContainer) #addSignatureActionContainer)
+  > [role='tabpanel'] {
+  background-color: var(--pw-signature-bg);
+  border: 1px solid var(--pw-border);
+  border-radius: 6px;
+}
+
+#addSignatureTypeContainer:is(
+    :is(:is(#addSignatureDialog .mainContainer) #addSignatureActionContainer)
+      > [role='tabpanel']
+  )
+  #addSignatureTypeInput {
+  color: var(--signature-color);
+  background-color: transparent;
+}
+
+#addSignatureTypeInput:focus-visible {
+  outline: 2px solid var(--pw-accent);
+  outline-offset: -2px;
+}
+
+#addSignatureTypeInput::placeholder {
+  color: var(--pw-text-3) !important;
+  font-family: var(--pw-font) !important;
+  font-style: normal;
+  font-size: 16px !important;
+}
+
+/* BentoPDF's font/colour bar over the Type pad */
+#signatureTypeControls {
+  inset-inline: 10px;
+  inset-block-start: 10px;
+  gap: 8px;
+  padding: 0;
+  background-color: transparent;
+  border-radius: 0;
+  flex-wrap: wrap;
+}
+
+#signatureTypeControls label {
+  font-family: var(--pw-font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pw-text-2);
+}
+
+#signatureTypeControls label + input,
+#signatureTypeControls label + select {
+  margin-inline-end: 8px;
+}
+
+#signatureFontSelect {
+  box-sizing: border-box;
+  height: 28px;
+  min-width: 150px;
+  padding: 0 28px 0 8px;
+  border: 1px solid var(--pw-field-border);
+  border-radius: 4px;
+  background-color: var(--pw-field-bg);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--pw-text-2) 50%),
+    linear-gradient(135deg, var(--pw-text-2) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 12px,
+    calc(100% - 10px) 12px;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+  -webkit-appearance: none;
+  appearance: none;
+  color: var(--pw-text);
+  font-family: var(--pw-font);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#signatureFontSelect:hover {
+  border-color: var(--pw-field-border-hover);
+}
+
+#signatureFontSelect:focus-visible {
+  outline: 2px solid var(--pw-accent);
+  outline-offset: -1px;
+  border-color: var(--pw-accent);
+}
+
+#signatureFontSelect option {
+  background: var(--pw-raised);
+  color: var(--pw-text);
+}
+
+#signatureColorPicker {
+  width: 28px;
+  height: 28px;
+  padding: 3px;
+  border: 1px solid var(--pw-field-border);
+  border-radius: 4px;
+  background: var(--pw-field-bg);
+}
+
+/* Draw / Image pads */
+#addSignatureDrawPlaceholder,
+#addSignatureImagePlaceholder {
+  color: var(--pw-text-3);
+  font-family: var(--pw-font);
+}
+
+#addSignatureImageBrowse a,
+#addSignatureImageBrowse {
+  color: var(--pw-accent-text);
+  font-weight: 600;
+}
+
+#thickness {
+  border-radius: 6px 0 6px 0;
+}
+
+#thickness label {
+  color: var(--pw-text);
+  font-family: var(--pw-font);
+}
+
+/* Description field + clear button row */
+#addSignatureControls label,
+#addSignatureDescriptionContainer label {
+  color: var(--pw-text);
+  font-family: var(--pw-font);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+#addSignatureDescInput {
+  height: 32px;
+}
+
+.signatureDialog .inputWithClearButton > .clearInputButton {
+  background-color: var(--pw-text-2);
+}
+
+#clearSignatureButton {
+  border-radius: 16px !important;
+  font-weight: 700 !important;
+  color: var(--pw-text) !important;
+}
+
+#clearSignatureButton:hover:not(:disabled) {
+  background-color: var(--pw-hover) !important;
+}
+
+#addSignatureSaveContainer {
+  color: var(--pw-text);
+}
+
+#addSignatureSaveContainer > input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--pw-accent);
+}
+
+#addSignatureSaveWarning {
+  color: var(--pw-text-2);
+}
+
+/* Saved signatures listed in the signature popover */
+#addSignatureDoorHanger {
+  gap: 4px;
+}
+
+#addSignatureDoorHanger .toolbarAddSignatureButtonContainer button {
+  border-radius: 4px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Floating editor toolbars on the page                                */
+/* ------------------------------------------------------------------ */
+
+#viewerContainer .editToolbar {
+  --editor-toolbar-bg-color: var(--pw-raised);
+  --editor-toolbar-fg-color: var(--pw-text);
+  --editor-toolbar-border-color: var(--pw-border);
+  --editor-toolbar-hover-border-color: var(--pw-border);
+  --editor-toolbar-hover-bg-color: var(--pw-hover);
+  --editor-toolbar-hover-fg-color: var(--pw-text);
+  --editor-toolbar-focus-outline-color: var(--pw-accent);
+  --editor-toolbar-shadow: var(--pw-shadow);
+  --editor-toolbar-height: 32px;
+  --editor-toolbar-padding: 3px;
+  --alt-text-done-color: #2d9d78;
+  --alt-text-warning-color: var(--pw-accent-text);
+  --alt-text-hover-done-color: #2d9d78;
+  --alt-text-hover-warning-color: var(--pw-accent-hover);
+  border-radius: 8px;
+}
+
+#viewerContainer .editToolbar .buttons button {
+  border-radius: 4px;
+}
+
+#viewerContainer .editToolbar .buttons .divider {
+  height: 20px;
+  border-left-color: var(--pw-border);
+  margin-inline: 4px;
+}
+
+#viewerContainer .editToolbar .altText,
+#viewerContainer .editToolbar .comment {
+  font-family: var(--pw-font) !important;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+/* Highlight popover: thickness examples + divider */
+.thicknessPicker,
+#highlightParamsToolbarContainer #editorHighlightThickness .thicknessPicker {
+  --example-color: var(--pw-text-3);
+}
+
+#highlightParamsToolbarContainer #editorHighlightVisibility .divider {
+  --divider-color: var(--pw-border);
+}
+
+/* Colour picker dropdown in the highlight toolbar */
+.colorPicker {
+  --hover-outline-color: var(--pw-border-strong);
+  --selected-outline-color: var(--pw-accent);
+  --swatch-border-color: var(--pw-border);
+}
+
+#viewerContainer .editToolbar .colorPicker .dropdown {
+  background-color: var(--pw-raised);
+  border: 1px solid var(--pw-border);
+  border-radius: 8px;
+  box-shadow: var(--pw-shadow);
+}
+
+/* Selected editors on the page get the accent outline */
+.annotationEditorLayer {
+  --outline-color: var(--pw-accent);
+  --hover-outline-color: var(--pw-accent);
+  --focus-outline-color: var(--pw-accent);
+  --resizer-bg-color: var(--pw-accent);
+  --resizer-hover-bg-color: var(--pw-accent-hover);
+}
+
+/* Alt-text tooltip on stamps */
+.altText.altText {
+  --alt-text-tooltip-bg: var(--pw-raised);
+  --alt-text-tooltip-fg: var(--pw-text);
+  --alt-text-tooltip-border: var(--pw-border);
+  --alt-text-tooltip-shadow: var(--pw-shadow);
+}
+
+/* Comment sidebar / popups (PDF.js 5 comments) */
+#editorCommentsSidebar,
+.commentPopup {
+  --comment-bg-color: var(--pw-raised);
+  --comment-fg-color: var(--pw-text);
+  --comment-date-fg-color: var(--pw-text-2);
+  --comment-border-color: var(--pw-border);
+  --comment-hover-bg-color: var(--pw-hover);
+  --comment-active-bg-color: var(--pw-selected-bg);
+  --comment-focus-outline-color: var(--pw-accent);
+  --comment-count-bg-color: var(--pw-hover);
+  --button-comment-bg: transparent;
+  --button-comment-color: var(--pw-text);
+  --button-comment-hover-bg: var(--pw-hover);
+  --button-comment-hover-color: var(--pw-text);
+  --button-comment-active-bg: var(--pw-pressed);
+  --button-comment-active-color: var(--pw-text);
+}
+
+.sidebar {
+  --sidebar-bg-color: var(--pw-raised);
+  --sidebar-border-color: var(--pw-border);
+  --sidebar-box-shadow: var(--pw-shadow);
+  --resizer-hover-bg-color: var(--pw-accent);
+}
+
+/* Search highlights */
+.textLayer .highlight {
+  --highlight-bg-color: rgb(255 214 0 / 0.45);
+  --highlight-selected-bg-color: rgb(59 99 251 / 0.4);
+}
+
+/* ------------------------------------------------------------------ */
+/* Scrollbars                                                          */
+/* ------------------------------------------------------------------ */
+
+#viewerContainer,
+#sidebarContent,
+.toolbarButtonWithContainer .menuContainer {
+  scrollbar-color: var(--pw-scrollbar) transparent;
+}
+
+/* ------------------------------------------------------------------ */
+/* Narrow viewers (tools docked in a 400px side panel)                 */
+/* ------------------------------------------------------------------ */
+
+@media all and (max-width: 560px) {
+  :root {
+    --toolbar-horizontal-padding: 4px;
+  }
+
+  .toolbarButton,
+  .toolbarButtonWithContainer {
+    width: 28px;
+    height: 28px;
+  }
+
+  .toolbarHorizontalGroup {
+    gap: 0;
+  }
+
+  :is(#toolbarContainer #toolbarViewer) .toolbarButtonSpacer {
+    width: 0;
+  }
+
+  .verticalToolbarSeparator {
+    margin-inline: 3px;
+  }
+
+  #pageNumber {
+    width: 36px;
+    padding-inline: 4px;
+  }
+
+  #numPages.toolbarLabel {
+    padding-inline: 4px 2px;
+    margin-inline: 0;
+  }
+
+  /* Anchor popovers to the viewer edge so they never fall off-screen */
+  .toolbarButtonWithContainer .editorParamsToolbar,
+  #secondaryToolbar {
+    position: fixed;
+    inset-inline: auto 8px;
+    inset-block-start: calc(var(--toolbar-height) + 4px);
+    max-width: calc(100vw - 16px);
+    box-sizing: border-box;
+  }
+
+  #findbar {
+    position: fixed;
+    inset-inline: 8px auto;
+    inset-block-start: calc(var(--toolbar-height) + 4px);
+    min-width: 0;
+    max-width: calc(100vw - 16px);
+  }
+
+  :is(#findbar #findInputContainer) #findInput {
+    width: 160px;
+  }
+
+  .dialog {
+    padding: 20px;
+  }
+
+  .signatureDialog {
+    padding: 20px 0 16px;
+  }
+
+  .signatureDialog .mainContainer > .title,
+  :is(#addSignatureDialog .mainContainer) [role='tablist'],
+  :is(#addSignatureDialog .mainContainer) #addSignatureActionContainer {
+    padding-inline: 16px;
+  }
+}

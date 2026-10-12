@@ -290,6 +290,11 @@ ipcMain.handle('paperwing:set-theme', (e, pref) => {
   nativeTheme.themeSource = ['light', 'dark'].includes(pref) ? pref : 'system';
 });
 
+// Same path as the window's close button (so unsaved work is checked)
+ipcMain.handle('paperwing:request-close', (e) => {
+  if (senderIsApp(e)) mainWindow?.close();
+});
+
 ipcMain.handle('paperwing:confirm-close', (e) => {
   if (!senderIsApp(e) || !mainWindow) return;
   allowClose = true;

@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('paperwing', {
     ipcRenderer.invoke('paperwing:write-file', path, data),
   saveAs: (name, data) => ipcRenderer.invoke('paperwing:save-as', name, data),
   confirmClose: () => ipcRenderer.invoke('paperwing:confirm-close'),
+  requestClose: () => ipcRenderer.invoke('paperwing:request-close'),
   onCloseRequested: (callback) => {
     const listener = () => callback();
     ipcRenderer.on('paperwing:close-requested', listener);

@@ -516,11 +516,31 @@ async function openFromDialog() {
     await openDocument(file, source);
 }
 
+/** An already-open tab for the same file on disk, if any */
+async function findOpenTab(source: FileSource): Promise<DocTab | undefined> {
+  for (const t of tabs) {
+    if (t.kind !== 'doc') continue;
+    if (source.path && t.path === source.path) return t;
+    if (
+      source.handle &&
+      t.handle &&
+      (await t.handle.isSameEntry(source.handle))
+    )
+      return t;
+  }
+  return undefined;
+}
+
 async function openDocument(
   file: File,
   source: FileSource = {},
   recentId?: string
 ) {
+  const existing = await findOpenTab(source);
+  if (existing) {
+    activate(existing.id);
+    return;
+  }
   const id = `doc-${++tabSeq}`;
   const panelEl = h('div', { class: 'lp', dataset: { owner: id } });
   $('#left-panel').append(panelEl);
@@ -684,7 +704,14 @@ function openToolTab(tool: AppTool, files: File[] = []) {
 }
 
 /** Run a tool against the open document (side panel or full area) */
+const isCreateTool = (tool: AppTool) =>
+  !!catalogGroups
+    .find((g) => g.name === 'Create a PDF')
+    ?.tools.some((t) => t.id === tool.id);
+
 async function openToolOnDoc(tab: DocTab, tool: AppTool) {
+  // "Create PDF from…" converters take other file types, never the open PDF
+  if (isCreateTool(tool)) return openToolTab(tool);
   noteToolUsed(tool.id);
   if (tool.action) return runViewerAction(tab, tool);
   if (!tool.href) return;
@@ -2184,6 +2211,40 @@ function showPreferences() {
         'Looks for new versions on GitHub once a day. Nothing else is sent.',
         prefs.checkUpdates,
         (v) => setPrefs({ checkUpdates: v })
+      ),
+      h('div', { class: 'pref-group' }, 'Advanced'),
+      h(
+        'div',
+        { class: 'pref-row' },
+        h(
+          'span',
+          {},
+          h('b', {}, 'Engine settings'),
+          h(
+            'small',
+            {},
+            'Where PyMuPDF, Ghostscript and CoherentPDF are loaded from (for offline or custom setups).'
+          )
+        ),
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'pill-btn',
+            onClick: () => {
+              document.querySelector('.dlg-backdrop')?.remove();
+              openToolTab({
+                id: 'wasm-settings',
+                name: 'Engine settings',
+                icon: 'gear-six',
+                color: '#6e6e6e',
+                desc: '',
+                href: `${import.meta.env.BASE_URL}wasm-settings.html`,
+              });
+            },
+          },
+          'Open'
+        )
       )
     )
   );
@@ -2416,7 +2477,8 @@ function runShortcut(id: string): boolean {
       showPreferences();
       return true;
     case 'quit':
-      window.close();
+      if (desktop) void desktop.requestClose();
+      else window.close();
       return true;
     case 'undo':
       return needDoc((d) => viewer.history(d.id, 'undo'));
@@ -2684,9 +2746,11 @@ void restoreSession();
     splash?.classList.add('is-done');
     setTimeout(() => splash?.remove(), 300);
     // Warm the PDF engine while the user looks at Home
-    const idle =
-      (window as any).requestIdleCallback ??
-      ((fn: () => void) => setTimeout(fn, 600));
-    idle(() => void viewer.warmUp(), { timeout: 2000 });
+    const warm = (): void => void viewer.warmUp();
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(warm, { timeout: 2000 });
+    } else {
+      setTimeout(warm, 600);
+    }
   }, wait);
 }

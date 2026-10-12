@@ -935,3 +935,14 @@ html .shortcut-key {
 html ::selection {
   background: color-mix(in srgb, var(--rs-accent) 30%, transparent);
 }
+
+/* Some tools use their own ids for the back link and title: hide those too */
+html.rs-embedded [id^='back-to-tools'],
+html[data-page='bookmark'].rs-embedded #back-btn,
+html.rs-embedded :is(button, a):has(> [data-i18n='tools.backToTools']) {
+  display: none !important;
+}
+html.rs-embedded h1[data-i18n^='tools:'],
+html.rs-embedded h1[data-i18n^='tools:'] + p {
+  display: none;
+}

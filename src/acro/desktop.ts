@@ -32,6 +32,8 @@ interface DesktopBridge {
   /** The window is about to close; call confirmClose() to let it */
   onCloseRequested?(callback: () => void): () => void;
   confirmClose(): Promise<void>;
+  /** Close the window as if its close button was clicked */
+  requestClose(): Promise<void>;
   /** Application-menu commands (macOS menu bar) */
   onMenuCommand?(callback: (command: string) => void): () => void;
 }

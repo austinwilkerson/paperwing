@@ -1,0 +1,1238 @@
+/*
+ * Paperwing theme for the annotation viewer used by add-stamps
+ * (public/pdfjs-annotation-viewer: PDF.js 4.3 + pdfjs-annotation-extension,
+ * a React + Ant Design v5 bundle with light-only CSS-in-JS).
+ * Injected by src/reskin/frames.ts. PDF.js 4.3 gates dark mode on
+ * html.is-light / html.is-dark with :where(), so plain :root rules here win;
+ * Ant Design styles are overridden with extra specificity and !important
+ * where its hashed CSS-in-JS would otherwise win.
+ */
+
+/* ------------------------------------------------------------------ */
+/* Tokens (keep in sync with pdfjs-theme.css)                          */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --pw-font: 'Source Sans 3', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --pw-bg: #ffffff;
+  --pw-canvas: #f8f8f8;
+  --pw-raised: #ffffff;
+  --pw-text: #222222;
+  --pw-text-2: #5e5e5e;
+  --pw-text-3: #8e8e8e;
+  --pw-border: #e1e1e1;
+  --pw-border-strong: #cacaca;
+  --pw-hover: #f0f0f0;
+  --pw-pressed: #e6e6e6;
+  --pw-accent: #3b63fb;
+  --pw-accent-hover: #274dea;
+  --pw-accent-pressed: #1f3fc9;
+  --pw-on-accent: #ffffff;
+  --pw-accent-text: #2c55f0;
+  --pw-selected-bg: #e9eeff;
+  --pw-selected-hover-bg: #dde5ff;
+  --pw-field-bg: #ffffff;
+  --pw-field-border: #cacaca;
+  --pw-field-border-hover: #a8a8a8;
+  --pw-field-disabled: #f4f4f4;
+  --pw-signature-bg: #fafafa;
+  --pw-scrim: rgb(0 0 0 / 0.32);
+  --pw-shadow: 0 4px 16px rgb(0 0 0 / 0.12), 0 1px 3px rgb(0 0 0 / 0.08);
+  --pw-shadow-dialog: 0 8px 32px rgb(0 0 0 / 0.18), 0 2px 6px rgb(0 0 0 / 0.08);
+  --pw-page-shadow-1: rgb(0 0 0 / 0.1);
+  --pw-page-shadow-2: rgb(0 0 0 / 0.16);
+  --pw-negative: #d31510;
+  --pw-negative-bg: #ffebe7;
+  --pw-scrollbar: #c4c4c4;
+  --pw-seg-bg: #f0f0f0;
+  --pw-seg-checked: #ffffff;
+  --pw-tile-bg: #ffffff;
+  /* Ink colours are fixed (black/red/blue); invert them on dark pads */
+  --pw-ink-filter: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --pw-bg: #222222;
+    --pw-canvas: #141414;
+    --pw-raised: #2a2a2a;
+    --pw-text: #ededed;
+    --pw-text-2: #b4b4b4;
+    --pw-text-3: #8a8a8a;
+    --pw-border: #333333;
+    --pw-border-strong: #4a4a4a;
+    --pw-hover: #2f2f2f;
+    --pw-pressed: #3a3a3a;
+    --pw-accent: #5c7cff;
+    --pw-accent-hover: #7590ff;
+    --pw-accent-pressed: #8ba2ff;
+    --pw-on-accent: #ffffff;
+    --pw-accent-text: #8ca1ff;
+    --pw-selected-bg: rgb(92 124 255 / 0.2);
+    --pw-selected-hover-bg: rgb(92 124 255 / 0.28);
+    --pw-field-bg: #1c1c1c;
+    --pw-field-border: #4a4a4a;
+    --pw-field-border-hover: #6a6a6a;
+    --pw-field-disabled: #262626;
+    --pw-signature-bg: #1c1c1c;
+    --pw-scrim: rgb(0 0 0 / 0.55);
+    --pw-shadow: 0 4px 16px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.04);
+    --pw-shadow-dialog:
+      0 8px 32px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.05);
+    --pw-page-shadow-1: rgb(0 0 0 / 0.5);
+    --pw-page-shadow-2: rgb(0 0 0 / 0.6);
+    --pw-negative: #ff6b5e;
+    --pw-negative-bg: #4a1f1c;
+    --pw-scrollbar: #4d4d4d;
+    --pw-seg-bg: #1c1c1c;
+    --pw-seg-checked: #3d3d3d;
+    --pw-tile-bg: #ececec;
+    --pw-ink-filter: invert(1) hue-rotate(180deg);
+  }
+}
+
+:root[data-theme='dark'] {
+  --pw-bg: #222222;
+  --pw-canvas: #141414;
+  --pw-raised: #2a2a2a;
+  --pw-text: #ededed;
+  --pw-text-2: #b4b4b4;
+  --pw-text-3: #8a8a8a;
+  --pw-border: #333333;
+  --pw-border-strong: #4a4a4a;
+  --pw-hover: #2f2f2f;
+  --pw-pressed: #3a3a3a;
+  --pw-accent: #5c7cff;
+  --pw-accent-hover: #7590ff;
+  --pw-accent-pressed: #8ba2ff;
+  --pw-on-accent: #ffffff;
+  --pw-accent-text: #8ca1ff;
+  --pw-selected-bg: rgb(92 124 255 / 0.2);
+  --pw-selected-hover-bg: rgb(92 124 255 / 0.28);
+  --pw-field-bg: #1c1c1c;
+  --pw-field-border: #4a4a4a;
+  --pw-field-border-hover: #6a6a6a;
+  --pw-field-disabled: #262626;
+  --pw-signature-bg: #1c1c1c;
+  --pw-scrim: rgb(0 0 0 / 0.55);
+  --pw-shadow: 0 4px 16px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.04);
+  --pw-shadow-dialog:
+    0 8px 32px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.05);
+  --pw-page-shadow-1: rgb(0 0 0 / 0.5);
+  --pw-page-shadow-2: rgb(0 0 0 / 0.6);
+  --pw-negative: #ff6b5e;
+  --pw-negative-bg: #4a1f1c;
+  --pw-scrollbar: #4d4d4d;
+  --pw-seg-bg: #1c1c1c;
+  --pw-seg-checked: #3d3d3d;
+  --pw-tile-bg: #ececec;
+  --pw-ink-filter: invert(1) hue-rotate(180deg);
+}
+
+/* ------------------------------------------------------------------ */
+/* PDF.js 4.3 variable remap                                           */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --toolbar-icon-opacity: 1;
+  --doorhanger-icon-opacity: 1;
+
+  --main-color: var(--pw-text);
+  --body-bg-color: var(--pw-canvas);
+  --progressBar-color: var(--pw-accent);
+  --progressBar-bg-color: var(--pw-border);
+  --progressBar-blend-color: var(--pw-selected-bg);
+  --scrollbar-color: var(--pw-scrollbar);
+  --scrollbar-bg-color: transparent;
+  --toolbar-icon-bg-color: var(--pw-text);
+  --toolbar-icon-hover-bg-color: var(--pw-text);
+  --sidebar-narrow-bg-color: var(--pw-bg);
+  --sidebar-toolbar-bg-color: var(--pw-bg);
+  --toolbar-bg-color: var(--pw-bg);
+  --toolbar-border-color: var(--pw-border);
+  --toolbar-box-shadow: none;
+  --toolbar-border-bottom: 1px solid var(--pw-border);
+  --toolbarSidebar-box-shadow: none;
+  --toolbarSidebar-border-bottom: 1px solid var(--pw-border);
+  --button-hover-color: var(--pw-hover);
+  --button-hover-color-active: var(--pw-pressed);
+  --toggled-btn-color: var(--pw-accent-text);
+  --toggled-btn-bg-color: var(--pw-selected-bg);
+  --toggled-hover-active-btn-color: var(--pw-selected-hover-bg);
+  --toggled-hover-btn-outline: none;
+  --dropdown-btn-bg-color: var(--pw-field-bg);
+  --dropdown-btn-border: 1px solid var(--pw-field-border);
+  --separator-color: var(--pw-border);
+  --field-color: var(--pw-text);
+  --field-bg-color: var(--pw-field-bg);
+  --field-border-color: var(--pw-field-border);
+  --treeitem-color: var(--pw-text);
+  --treeitem-bg-color: var(--pw-hover);
+  --treeitem-hover-color: var(--pw-text);
+  --treeitem-selected-color: var(--pw-text);
+  --treeitem-selected-bg-color: var(--pw-selected-bg);
+  --thumbnail-hover-color: var(--pw-border-strong);
+  --thumbnail-selected-color: var(--pw-accent);
+  --doorhanger-bg-color: var(--pw-raised);
+  --doorhanger-border-color: var(--pw-border);
+  --doorhanger-hover-color: var(--pw-text);
+  --doorhanger-hover-bg-color: var(--pw-hover);
+  --doorhanger-separator-color: var(--pw-border);
+  --dialog-button-border: 2px solid var(--pw-text);
+  --dialog-button-bg-color: transparent;
+  --dialog-button-hover-bg-color: var(--pw-hover);
+  --dialog-button-hover-color: var(--pw-text);
+  --focus-ring-color: var(--pw-accent);
+  --outline-color: var(--pw-accent);
+  --hover-outline-color: var(--pw-accent);
+  --focus-outline-color: var(--pw-accent);
+
+  color-scheme: light dark;
+  accent-color: var(--pw-accent);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* ------------------------------------------------------------------ */
+/* Typography                                                          */
+/* ------------------------------------------------------------------ */
+
+body,
+button,
+input:not(.SignatureTool-Container input),
+select,
+textarea,
+dialog,
+.dialog,
+.toolbar,
+.toolbarButton,
+.secondaryToolbarButton,
+.toolbarLabel,
+.findbar,
+.secondaryToolbar,
+.editorParamsToolbar,
+.editorParamsLabel,
+#sidebarContainer,
+:is(.toolbar, .editorParamsToolbar, .findbar, #sidebarContainer)
+  :is(input, button, select),
+.secondaryToolbar :is(input, button, a, select),
+.CustomToolbar,
+.CustomPopbar,
+.CustomAnnotationMenu,
+.CustomComment,
+.ant-popover,
+.ant-modal,
+.ant-btn,
+.ant-input,
+.ant-select,
+.ant-select-dropdown,
+.ant-radio-button-wrapper,
+.ant-form,
+.ant-message,
+.ant-tooltip,
+.ant-typography {
+  font-family: var(--pw-font) !important;
+}
+
+body {
+  background-color: var(--pw-canvas);
+  color: var(--pw-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ------------------------------------------------------------------ */
+/* PDF.js toolbar row                                                  */
+/* ------------------------------------------------------------------ */
+
+#toolbarContainer {
+  background-color: var(--pw-bg);
+  border-bottom: 1px solid var(--pw-border);
+  box-shadow: none;
+}
+
+#toolbarContainer #loadingBar {
+  height: 2px;
+  border-bottom: none;
+}
+
+.toolbarButton,
+.dropdownToolbarButton,
+.secondaryToolbarButton,
+.dialogButton {
+  border-radius: 4px;
+  color: var(--pw-text);
+}
+
+.toolbarButton::before {
+  opacity: 1;
+  background-color: var(--pw-text);
+}
+
+.toolbarButton:is(:hover, :focus-visible),
+.splitToolbarButton > .toolbarButton:is(:hover, :focus-visible) {
+  background-color: var(--pw-hover);
+}
+
+:is(.toolbarButton, .secondaryToolbarButton).toggled,
+.splitToolbarButton.toggled > .toolbarButton.toggled {
+  background-color: var(--pw-selected-bg);
+  color: var(--pw-accent-text);
+}
+
+:is(.toolbarButton, .secondaryToolbarButton).toggled::before {
+  background-color: var(--pw-accent-text);
+}
+
+.splitToolbarButtonSeparator {
+  background-color: transparent;
+}
+
+.verticalToolbarSeparator {
+  background-color: var(--pw-border);
+}
+
+.toolbarLabel {
+  color: var(--pw-text-2);
+  font-size: 13px;
+}
+
+.toolbarField {
+  border-radius: 4px;
+  border: 1px solid var(--pw-field-border);
+  background-color: var(--pw-field-bg);
+  color: var(--pw-text);
+  font-size: 13px;
+}
+
+.toolbarField:hover {
+  border-color: var(--pw-field-border-hover);
+}
+
+.toolbarField:focus {
+  border-color: var(--pw-accent);
+  box-shadow: 0 0 0 1px var(--pw-accent);
+}
+
+#pageNumber {
+  text-align: center;
+}
+
+.dropdownToolbarButton {
+  border: 1px solid var(--pw-field-border);
+  border-radius: 4px;
+  background-color: var(--pw-field-bg);
+  overflow: hidden;
+  height: 28px;
+  box-sizing: border-box;
+}
+
+.dropdownToolbarButton:hover {
+  border-color: var(--pw-field-border-hover);
+  background-color: var(--pw-field-bg);
+}
+
+.dropdownToolbarButton > select {
+  height: 26px;
+  font-size: 13px;
+  color: var(--pw-text);
+  background-color: var(--pw-field-bg);
+}
+
+.dropdownToolbarButton > select:is(:hover, :focus-visible) {
+  background-color: var(--pw-field-bg);
+  color: var(--pw-text);
+}
+
+.dropdownToolbarButton > select > option {
+  background: var(--pw-raised);
+  color: var(--pw-text);
+}
+
+.dropdownToolbarButton::after,
+.dropdownToolbarButton:is(:hover, :focus-visible, :active)::after {
+  top: 5px;
+  background-color: var(--pw-text-2);
+}
+
+/* Popovers: tools menu, find bar */
+.doorHanger,
+.doorHangerRight {
+  border-radius: 8px;
+  border: 1px solid var(--pw-border);
+  box-shadow: var(--pw-shadow);
+}
+
+:is(.doorHanger, .doorHangerRight)::before,
+:is(.doorHanger, .doorHangerRight)::after {
+  display: none;
+}
+
+.findbar {
+  background-color: var(--pw-raised);
+  padding: 4px 6px;
+}
+
+.findbar label {
+  border-radius: 4px;
+}
+
+.findbar .toolbarField[type='checkbox']:checked + .toolbarLabel {
+  background-color: var(--pw-selected-bg) !important;
+  color: var(--pw-accent-text);
+}
+
+#findResultsCount {
+  background-color: var(--pw-hover);
+  color: var(--pw-text-2);
+  border-radius: 4px;
+}
+
+#findInput[data-status='notFound'] {
+  background-color: var(--pw-negative-bg);
+  border-color: var(--pw-negative);
+}
+
+.secondaryToolbar,
+.editorParamsToolbar {
+  background-color: var(--pw-raised);
+  padding: 6px;
+}
+
+.secondaryToolbarButton {
+  min-height: 30px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: 14px;
+  color: var(--pw-text);
+}
+
+.secondaryToolbarButton::before {
+  top: 7px;
+  background-color: var(--pw-text);
+}
+
+.secondaryToolbarButton:is(:hover, :focus-visible) {
+  background-color: var(--pw-hover);
+  color: var(--pw-text);
+}
+
+.horizontalToolbarSeparator {
+  background-color: var(--pw-border);
+}
+
+.editorParamsToolbarContainer .editorParamsLabel {
+  color: var(--pw-text);
+}
+
+#highlightParamsToolbarContainer #editorHighlightThickness .thicknessPicker {
+  --example-color: var(--pw-text-3);
+}
+
+#highlightParamsToolbarContainer #editorHighlightVisibility .divider {
+  --divider-color: var(--pw-border);
+}
+
+/* Sidebar */
+#sidebarContainer {
+  background-color: var(--pw-bg);
+  border-inline-end: 1px solid var(--pw-border);
+}
+
+#toolbarSidebar {
+  background-color: var(--pw-bg);
+}
+
+#sidebarContent {
+  background-color: var(--pw-bg);
+  box-shadow: none;
+}
+
+.thumbnail.selected {
+  border-color: var(--pw-accent) !important;
+}
+
+/* Document canvas + page shadow */
+#viewerContainer {
+  background-color: var(--pw-canvas);
+}
+
+.pdfViewer .page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 1px var(--pw-page-shadow-1),
+    0 2px 8px var(--pw-page-shadow-2);
+}
+
+/* PDF.js dialogs (password, document properties) */
+dialog {
+  border: 1px solid var(--pw-border);
+  border-radius: 8px;
+  background-color: var(--pw-raised);
+  color: var(--pw-text);
+  box-shadow: var(--pw-shadow-dialog);
+  padding: 20px 24px;
+}
+
+dialog::backdrop {
+  background-color: var(--pw-scrim);
+}
+
+.dialogButton {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 16px;
+  border: 2px solid var(--pw-text) !important;
+  background-color: transparent;
+  color: var(--pw-text);
+  font-weight: 700;
+}
+
+.dialog {
+  --dialog-bg-color: var(--pw-raised);
+  --dialog-border-color: var(--pw-raised);
+  --dialog-shadow: var(--pw-shadow-dialog);
+  --text-primary-color: var(--pw-text);
+  --text-secondary-color: var(--pw-text-2);
+  --button-primary-bg-color: var(--pw-accent);
+  --button-primary-fg-color: var(--pw-on-accent);
+  --button-secondary-bg-color: transparent;
+  --hover-filter: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Annotation extension: tool strip                                    */
+/* ------------------------------------------------------------------ */
+
+.CustomToolbar {
+  background-color: var(--pw-bg);
+  border-top: 1px solid var(--pw-border);
+  box-sizing: border-box;
+  scrollbar-width: thin;
+}
+
+.CustomToolbar .buttons {
+  gap: 2px;
+}
+
+.CustomToolbar .buttons li {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--pw-text);
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.CustomToolbar .buttons li .icon {
+  opacity: 1;
+  padding: 6px 10px 2px;
+  border-bottom: 0;
+}
+
+.CustomToolbar .buttons li .name {
+  font-size: 13px;
+  padding: 0 10px 5px;
+}
+
+@media (hover: hover) {
+  .CustomToolbar .buttons li:hover {
+    background-color: var(--pw-hover);
+  }
+}
+
+.CustomToolbar .buttons li:active {
+  background-color: var(--pw-pressed);
+}
+
+.CustomToolbar .buttons li.selected,
+.CustomToolbar .buttons li.selected:hover {
+  border-color: transparent;
+  background-color: var(--pw-selected-bg);
+  color: var(--pw-accent-text);
+}
+
+.CustomToolbar .buttons li.disabled,
+.CustomToolbar .buttons li.disabled:hover {
+  background-color: transparent;
+  opacity: 0.38;
+}
+
+.CustomToolbar .splitToolbarButtonSeparator {
+  background-color: var(--pw-border);
+}
+
+/* Floating menus on the page */
+.CustomPopbar,
+.CustomAnnotationMenu {
+  background-color: var(--pw-raised);
+  border: 1px solid var(--pw-border);
+  border-radius: 8px;
+  box-shadow: var(--pw-shadow);
+  color: var(--pw-text);
+  padding: 4px;
+}
+
+.CustomPopbar .buttons li,
+.CustomAnnotationMenu .buttons li {
+  color: var(--pw-text);
+  border-radius: 4px;
+}
+
+.CustomPopbar .buttons li:hover,
+.CustomAnnotationMenu .buttons li:hover {
+  background-color: var(--pw-hover);
+}
+
+.CustomPopbar .buttons li:active,
+.CustomAnnotationMenu .buttons li:active {
+  background-color: var(--pw-pressed);
+}
+
+.CustomAnnotationMenu .styleContainer .colorPalette .cell:hover {
+  border-color: var(--pw-border-strong);
+}
+
+.CustomAnnotationMenu .styleContainer .colorPalette .cell.active {
+  border-color: var(--pw-text);
+}
+
+.CustomAnnotationMenu
+  .styleContainer
+  .prototypeSetting
+  .ant-form-item-label
+  label {
+  color: var(--pw-text) !important;
+}
+
+/* Comments panel */
+.CustomComment {
+  background-color: var(--pw-bg);
+  color: var(--pw-text);
+  border-left: 1px solid var(--pw-border);
+}
+
+.CustomComment .list .comment {
+  border: 1px solid var(--pw-border);
+  background-color: var(--pw-raised);
+  border-radius: 8px;
+}
+
+.CustomComment .list .comment:hover {
+  background-color: var(--pw-hover);
+}
+
+.CustomComment .list .selected,
+.CustomComment .list .comment.selected {
+  border-color: var(--pw-accent);
+  background-color: var(--pw-selected-bg);
+}
+
+.CustomComment .list .comment .title .username span {
+  color: var(--pw-text-2);
+  opacity: 1;
+}
+
+.CustomComment .list .comment .title .tool .icon:hover {
+  background-color: var(--pw-hover);
+}
+
+.CustomComment_filterContent li:hover {
+  background-color: var(--pw-hover);
+}
+
+/* Signature / stamp creation pads and pickers */
+.SignatureTool-Container,
+.StampTool-Container-ImagePreview {
+  background-color: var(--pw-signature-bg) !important;
+  border: 1px solid var(--pw-border) !important;
+  border-radius: 6px 6px 0 0;
+}
+
+.SignatureTool-Container-info,
+.StampTool-Container-info {
+  color: var(--pw-text-3) !important;
+}
+
+.SignatureTool-Container input {
+  color: var(--pw-text);
+}
+
+.SignatureTool-Container input::placeholder,
+.SignatureTool-Container input::-webkit-input-placeholder {
+  color: var(--pw-text-3) !important;
+}
+
+.SignatureTool-Toolbar,
+.StampTool-Toolbar {
+  border: 1px solid var(--pw-border) !important;
+  border-top: 0 !important;
+  border-radius: 0 0 6px 6px;
+  background-color: var(--pw-raised);
+  color: var(--pw-text);
+}
+
+.SignatureTool-Toolbar .colorPalette .cell,
+.StampTool-Toolbar .colorPalette .cell {
+  border-color: transparent !important;
+}
+
+.SignatureTool-Toolbar .colorPalette .active,
+.StampTool-Toolbar .colorPalette .active {
+  border-color: var(--pw-text) !important;
+}
+
+.SignatureTool-Toolbar .clear,
+.StampTool-Toolbar .clear {
+  color: var(--pw-accent-text);
+  font-weight: 600;
+}
+
+.SignatureTool-Header {
+  padding: 0 0 14px !important;
+}
+
+.SignaturePop ul li,
+.StampPop ul li {
+  border-radius: 4px;
+}
+
+/* Stamps are page artwork: show them on light tiles in both themes */
+.StampPop-Container {
+  gap: 6px;
+}
+
+.StampPop-Container li {
+  background-color: var(--pw-tile-bg);
+  border: 1px solid var(--pw-border);
+  border-radius: 6px !important;
+}
+
+.StampPop-Container li:hover {
+  border-color: var(--pw-accent);
+  background-color: var(--pw-tile-bg) !important;
+}
+
+/* Black ink stays readable on the dark signature pad and list */
+.SignatureTool-Container .konvajs-content canvas,
+.SignatureTool-Container input,
+.SignaturePop li img {
+  filter: var(--pw-ink-filter);
+}
+
+.SignatureTool-Toolbar .colorPalette .cell span,
+.StampTool-Toolbar .colorPalette .cell span,
+.CustomAnnotationMenu .styleContainer .colorPalette .cell span {
+  box-shadow: 0 0 0 1px var(--pw-border-strong);
+}
+
+.SignaturePop ul li:hover,
+.SignaturePop li li:hover,
+.StampPop ul li:hover,
+.StampPop li li:hover {
+  background-color: var(--pw-hover) !important;
+}
+
+/* ------------------------------------------------------------------ */
+/* Ant Design overrides                                                */
+/* ------------------------------------------------------------------ */
+
+/* Popover */
+html .ant-popover {
+  max-width: calc(100vw - 16px);
+}
+
+html .ant-popover .ant-popover-inner {
+  background-color: var(--pw-raised);
+  border: 1px solid var(--pw-border);
+  border-radius: 8px;
+  box-shadow: var(--pw-shadow);
+  color: var(--pw-text);
+  padding: 8px;
+}
+
+html .ant-popover .ant-popover-title {
+  color: var(--pw-text);
+}
+
+html .ant-popover .ant-popover-inner-content {
+  color: var(--pw-text);
+}
+
+html .ant-popover .ant-popover-arrow {
+  display: none;
+}
+
+/* Modal */
+html .ant-modal-mask {
+  background-color: var(--pw-scrim) !important;
+}
+
+html .ant-modal .ant-modal-content {
+  background-color: var(--pw-raised);
+  border: 1px solid var(--pw-border);
+  border-radius: 8px;
+  box-shadow: var(--pw-shadow-dialog);
+  padding: 24px;
+  color: var(--pw-text);
+}
+
+html .ant-modal .ant-modal-header {
+  background: transparent;
+  margin-bottom: 16px;
+}
+
+html .ant-modal .ant-modal-title {
+  color: var(--pw-text);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+html .ant-modal .ant-modal-close {
+  top: 18px;
+  inset-inline-end: 18px;
+  color: var(--pw-text-2);
+  border-radius: 4px;
+}
+
+html .ant-modal .ant-modal-close:hover {
+  background-color: var(--pw-hover);
+  color: var(--pw-text);
+}
+
+html .ant-modal .ant-modal-body {
+  color: var(--pw-text);
+}
+
+html .ant-modal .ant-modal-footer {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+html .ant-modal .ant-modal-footer > .ant-btn + .ant-btn {
+  margin-inline-start: 0;
+}
+
+/* Buttons: pills. Primary = accent fill, default = 2px outline */
+html .ant-btn {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: none !important;
+}
+
+html .ant-btn.ant-btn-sm {
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 13px;
+  font-size: 13px;
+}
+
+html .ant-btn-default,
+html .ant-btn-variant-outlined:not(.ant-btn-primary) {
+  background-color: transparent !important;
+  border: 2px solid var(--pw-text) !important;
+  color: var(--pw-text) !important;
+}
+
+html .ant-btn-default:not(:disabled):hover,
+html .ant-btn-variant-outlined:not(.ant-btn-primary):not(:disabled):hover {
+  background-color: var(--pw-hover) !important;
+}
+
+html .ant-btn-default:not(:disabled):active {
+  background-color: var(--pw-pressed) !important;
+}
+
+html .ant-btn-primary,
+html .ant-btn-variant-solid.ant-btn-color-primary {
+  background-color: var(--pw-accent) !important;
+  border: 2px solid var(--pw-accent) !important;
+  color: var(--pw-on-accent) !important;
+}
+
+html .ant-btn-primary:not(:disabled):hover {
+  background-color: var(--pw-accent-hover) !important;
+  border-color: var(--pw-accent-hover) !important;
+}
+
+html .ant-btn-primary:not(:disabled):active {
+  background-color: var(--pw-accent-pressed) !important;
+  border-color: var(--pw-accent-pressed) !important;
+}
+
+html .ant-btn:disabled,
+html .ant-btn-primary:disabled,
+html .ant-btn-default:disabled {
+  background-color: var(--pw-pressed) !important;
+  border-color: var(--pw-pressed) !important;
+  color: var(--pw-text-3) !important;
+}
+
+html .ant-btn-link,
+html .ant-btn-variant-link {
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--pw-accent-text) !important;
+  font-weight: 600;
+}
+
+html .ant-btn-link:not(:disabled):hover,
+html .ant-btn-variant-link:not(:disabled):hover {
+  color: var(--pw-accent-hover) !important;
+  background-color: var(--pw-hover) !important;
+}
+
+html .ant-btn-text {
+  color: var(--pw-text) !important;
+}
+
+html .ant-btn-text:not(:disabled):hover {
+  background-color: var(--pw-hover) !important;
+}
+
+html .ant-btn-dangerous.ant-btn-primary {
+  background-color: var(--pw-negative) !important;
+  border-color: var(--pw-negative) !important;
+}
+
+/* Radio button groups: Acrobat segmented control */
+html .ant-radio-group:has(.ant-radio-button-wrapper) {
+  display: flex;
+  gap: 0;
+  padding: 2px;
+  border-radius: 6px;
+  background-color: var(--pw-seg-bg);
+}
+
+html .ant-radio-button-wrapper {
+  flex: 1;
+  height: 28px;
+  line-height: 28px;
+  text-align: center;
+  border: 0 !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+  color: var(--pw-text-2) !important;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+html .ant-radio-group-small .ant-radio-button-wrapper {
+  height: 26px;
+  line-height: 26px;
+}
+
+html .ant-radio-button-wrapper::before {
+  display: none !important;
+}
+
+html .ant-radio-button-wrapper:hover {
+  color: var(--pw-text) !important;
+}
+
+html .ant-radio-button-wrapper-checked,
+html .ant-radio-button-wrapper-checked:hover {
+  background: var(--pw-seg-checked) !important;
+  color: var(--pw-text) !important;
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 0.16),
+    0 0 0 1px var(--pw-border) !important;
+}
+
+html .ant-radio-button-wrapper:focus-within {
+  outline: 2px solid var(--pw-accent);
+  outline-offset: 1px;
+}
+
+/* Plain radios / checkboxes */
+html .ant-radio-wrapper,
+html .ant-checkbox-wrapper {
+  color: var(--pw-text);
+}
+
+html .ant-radio-inner,
+html .ant-checkbox-inner {
+  background-color: var(--pw-field-bg) !important;
+  border-color: var(--pw-field-border-hover) !important;
+}
+
+html .ant-radio-checked .ant-radio-inner {
+  border-color: var(--pw-accent) !important;
+  background-color: var(--pw-accent) !important;
+}
+
+html .ant-checkbox-checked .ant-checkbox-inner {
+  background-color: var(--pw-accent) !important;
+  border-color: var(--pw-accent) !important;
+}
+
+/* Text fields, selects, number inputs */
+html .ant-input,
+html .ant-input-affix-wrapper,
+html .ant-input-number,
+html .ant-select .ant-select-selector,
+html .ant-picker {
+  min-height: 32px;
+  border-radius: 4px !important;
+  border: 1px solid var(--pw-field-border) !important;
+  background-color: var(--pw-field-bg) !important;
+  color: var(--pw-text) !important;
+  box-shadow: none !important;
+  font-size: 14px;
+}
+
+html .ant-input-affix-wrapper > .ant-input,
+html .ant-input-number .ant-input-number-input {
+  min-height: 0;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--pw-text) !important;
+}
+
+html .ant-input-number .ant-input-number-input {
+  height: 30px;
+}
+
+html .ant-input:hover,
+html .ant-input-affix-wrapper:hover,
+html .ant-input-number:hover,
+html .ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+  border-color: var(--pw-field-border-hover) !important;
+}
+
+html .ant-input:focus,
+html .ant-input-focused,
+html .ant-input-affix-wrapper-focused,
+html .ant-input-affix-wrapper:focus-within,
+html .ant-input-number-focused,
+html .ant-input-number:focus-within,
+html .ant-select-focused .ant-select-selector,
+html .ant-select-open .ant-select-selector {
+  border-color: var(--pw-accent) !important;
+  box-shadow: 0 0 0 1px var(--pw-accent) !important;
+}
+
+html .ant-input::placeholder,
+html .ant-input-number-input::placeholder,
+html .ant-select-selection-placeholder {
+  color: var(--pw-text-3) !important;
+}
+
+html .ant-input-number-handler-wrap {
+  background: var(--pw-field-bg) !important;
+}
+
+html .ant-input-number-handler {
+  border-color: var(--pw-field-border) !important;
+  color: var(--pw-text-2) !important;
+}
+
+html .ant-select-arrow,
+html .ant-select-clear,
+html .ant-input-clear-icon,
+html .ant-input-suffix,
+html .ant-input-prefix {
+  color: var(--pw-text-2) !important;
+  background: transparent;
+}
+
+html .ant-select-selection-item {
+  color: var(--pw-text) !important;
+}
+
+/* Dropdown menus (select popups) */
+html .ant-select-dropdown,
+html .ant-dropdown .ant-dropdown-menu {
+  background-color: var(--pw-raised) !important;
+  border: 1px solid var(--pw-border);
+  border-radius: 8px !important;
+  box-shadow: var(--pw-shadow) !important;
+  padding: 4px;
+}
+
+html .ant-select-item,
+html .ant-dropdown-menu-item {
+  color: var(--pw-text) !important;
+  border-radius: 4px !important;
+  font-size: 14px;
+}
+
+html .ant-select-item-option-active:not(.ant-select-item-option-disabled),
+html .ant-dropdown-menu-item:hover {
+  background-color: var(--pw-hover) !important;
+}
+
+html .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: var(--pw-selected-bg) !important;
+  color: var(--pw-text) !important;
+  font-weight: 600;
+}
+
+/* Forms */
+html .ant-form-item-label > label,
+html .ant-form-item .ant-form-item-label > label {
+  color: var(--pw-text) !important;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+html .ant-form-item-explain,
+html .ant-form-item-extra {
+  color: var(--pw-text-2);
+}
+
+/* Slider */
+html .ant-slider .ant-slider-rail,
+html .ant-slider:hover .ant-slider-rail {
+  background-color: var(--pw-border-strong) !important;
+  height: 2px;
+}
+
+html .ant-slider .ant-slider-track,
+html .ant-slider:hover .ant-slider-track {
+  background-color: var(--pw-text) !important;
+  height: 2px;
+}
+
+html .ant-slider .ant-slider-handle::after,
+html .ant-slider:hover .ant-slider-handle::after,
+html .ant-slider .ant-slider-handle:hover::after,
+html .ant-slider .ant-slider-handle:focus::after {
+  background-color: var(--pw-raised) !important;
+  box-shadow: 0 0 0 2px var(--pw-text) !important;
+}
+
+html .ant-slider .ant-slider-handle:focus-visible::after {
+  box-shadow:
+    0 0 0 2px var(--pw-accent),
+    0 0 0 4px var(--pw-selected-bg) !important;
+}
+
+html .ant-slider .ant-slider-dot {
+  background-color: var(--pw-raised);
+  border-color: var(--pw-border-strong);
+}
+
+html .ant-slider .ant-slider-mark-text {
+  color: var(--pw-text-2);
+}
+
+/* Tabs */
+html .ant-tabs {
+  color: var(--pw-text);
+}
+
+html .ant-tabs .ant-tabs-tab {
+  color: var(--pw-text-2);
+  font-weight: 600;
+}
+
+html .ant-tabs .ant-tabs-tab:hover,
+html .ant-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--pw-text) !important;
+}
+
+html .ant-tabs .ant-tabs-ink-bar {
+  background: var(--pw-accent) !important;
+  height: 2px !important;
+}
+
+html .ant-tabs-top > .ant-tabs-nav::before {
+  border-bottom-color: var(--pw-border) !important;
+}
+
+/* Misc */
+html .ant-divider {
+  border-color: var(--pw-border) !important;
+}
+
+html .ant-typography,
+html .ant-empty-description {
+  color: var(--pw-text) !important;
+}
+
+html .ant-switch {
+  background: var(--pw-border-strong) !important;
+}
+
+html .ant-switch.ant-switch-checked {
+  background: var(--pw-accent) !important;
+}
+
+html .ant-color-picker-trigger {
+  border-color: var(--pw-field-border) !important;
+  background: var(--pw-field-bg) !important;
+  border-radius: 4px !important;
+}
+
+html .ant-popover .ant-color-picker-inner,
+html .ant-color-picker-panel {
+  color: var(--pw-text);
+}
+
+html .ant-upload-wrapper .ant-upload-drag {
+  background: var(--pw-signature-bg) !important;
+  border-color: var(--pw-border-strong) !important;
+  border-radius: 6px !important;
+}
+
+html .ant-upload-wrapper .ant-upload-drag:hover {
+  border-color: var(--pw-accent) !important;
+}
+
+html .ant-upload-wrapper .ant-upload-drag p,
+html .ant-upload-wrapper .ant-upload-text,
+html .ant-upload-wrapper .ant-upload-hint {
+  color: var(--pw-text-2) !important;
+}
+
+html .ant-message .ant-message-notice-content,
+html .ant-notification .ant-notification-notice {
+  background-color: var(--pw-raised) !important;
+  color: var(--pw-text) !important;
+  border: 1px solid var(--pw-border);
+  border-radius: 8px !important;
+  box-shadow: var(--pw-shadow) !important;
+}
+
+html .ant-tooltip .ant-tooltip-inner {
+  background-color: #323232 !important;
+  color: #ffffff !important;
+  border-radius: 4px !important;
+  font-size: 12px;
+}
+
+html .ant-tooltip .ant-tooltip-arrow::before {
+  background: #323232 !important;
+}
+
+html .anticon {
+  color: inherit;
+}
+
+/* ------------------------------------------------------------------ */
+/* Scrollbars                                                          */
+/* ------------------------------------------------------------------ */
+
+#viewerContainer,
+#sidebarContent,
+.CustomComment,
+.CustomToolbar,
+#secondaryToolbarButtonContainer {
+  scrollbar-color: var(--pw-scrollbar) transparent;
+}

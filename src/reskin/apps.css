@@ -1,0 +1,1884 @@
+/*
+ * Page-specific Acrobat-style overrides for upstream tools that render their
+ * own editor UI. Every block is keyed by html[data-page="..."] (set by
+ * reskin.ts) and built on the --rs-* tokens from reskin.css, so it follows
+ * light/dark automatically. JS-side theme hooks live in apps.ts.
+ */
+
+/* ------------------------------------------------------------------ */
+/* Extra tokens shared by the editors                                  */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --ap-canvas: #f0f0f0;
+  --ap-canvas-dot: rgb(0 0 0 / 0.1);
+  --ap-page-shadow: 0 1px 3px rgb(0 0 0 / 0.18), 0 0 0 1px rgb(0 0 0 / 0.05);
+  --ap-pop-shadow: 0 4px 16px rgb(0 0 0 / 0.12), 0 0 0 1px rgb(0 0 0 / 0.06);
+  --ap-dialog-shadow: 0 8px 32px rgb(0 0 0 / 0.18);
+  --ap-scrim: rgb(0 0 0 / 0.4);
+  --ap-pop: #ffffff;
+  --ap-tooltip-bg: #2c2c2c;
+  --ap-danger: #d31510;
+  --ap-danger-tint: #ffebe7;
+  --ap-success: #12805c;
+  --ap-warning: #e68619;
+  --ap-selected-text: var(--rs-accent);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ap-canvas: #141414;
+    --ap-canvas-dot: rgb(255 255 255 / 0.07);
+    --ap-page-shadow: 0 1px 4px rgb(0 0 0 / 0.6);
+    --ap-pop-shadow: 0 4px 16px rgb(0 0 0 / 0.5), 0 0 0 1px #3a3a3a;
+    --ap-dialog-shadow: 0 8px 32px rgb(0 0 0 / 0.6);
+    --ap-scrim: rgb(0 0 0 / 0.6);
+    --ap-pop: #2a2a2a;
+    --ap-tooltip-bg: #4a4a4a;
+    --ap-danger: #f75c46;
+    --ap-danger-tint: #3b1d1a;
+    --ap-success: #33ab84;
+    --ap-warning: #f29423;
+    --ap-selected-text: #a3b6ff;
+  }
+}
+:root[data-theme='dark'] {
+  --ap-canvas: #141414;
+  --ap-canvas-dot: rgb(255 255 255 / 0.07);
+  --ap-page-shadow: 0 1px 4px rgb(0 0 0 / 0.6);
+  --ap-pop-shadow: 0 4px 16px rgb(0 0 0 / 0.5), 0 0 0 1px #3a3a3a;
+  --ap-dialog-shadow: 0 8px 32px rgb(0 0 0 / 0.6);
+  --ap-scrim: rgb(0 0 0 / 0.6);
+  --ap-pop: #2a2a2a;
+  --ap-tooltip-bg: #4a4a4a;
+  --ap-danger: #f75c46;
+  --ap-danger-tint: #3b1d1a;
+  --ap-success: #33ab84;
+  --ap-warning: #f29423;
+  --ap-selected-text: #a3b6ff;
+}
+
+/* ================================================================== */
+/* Edit PDF text (editcore) — Acrobat "Edit text & images"            */
+/* ================================================================== */
+
+html[data-page='edit-pdf-text'] #text-editor-app {
+  --ecbg: var(--rs-bg);
+  --ecpanel: var(--rs-surface);
+  --ecpanel2: var(--rs-surface-hover);
+  --ecline: var(--rs-border);
+  --ectext: var(--rs-text);
+  --ecmuted: var(--rs-text-2);
+  --ecaccent: var(--rs-accent);
+  --ecstage: var(--ap-canvas);
+  color-scheme: inherit;
+  font: 14px/1.35 var(--rs-font);
+}
+html[data-page='edit-pdf-text'] #text-editor-app button,
+html[data-page='edit-pdf-text'] #text-editor-app select,
+html[data-page='edit-pdf-text'] #text-editor-app input {
+  font-family: var(--rs-font);
+}
+
+/* Top toolbar: flat white bar, quiet buttons */
+html[data-page='edit-pdf-text'] #text-editor-app #toolbar {
+  min-height: 48px;
+  padding: 7px 12px;
+  background: var(--rs-surface);
+  border-bottom: 1px solid var(--rs-border);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .btn,
+html[data-page='edit-pdf-text'] #text-editor-app .toolright button[data-tool] {
+  height: 32px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--rs-text-2);
+  font-size: 14px;
+  font-weight: 600;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .btn.icon,
+html[data-page='edit-pdf-text'] #text-editor-app .toolright button[data-tool] {
+  width: 32px;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .btn:hover:not(:disabled),
+html[data-page='edit-pdf-text']
+  #text-editor-app
+  .toolright
+  button[data-tool]:hover {
+  background: var(--rs-surface-hover);
+  color: var(--rs-text);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .btn:active:not(:disabled) {
+  background: var(--rs-surface-active);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .btn.on,
+html[data-page='edit-pdf-text'] #text-editor-app #toggleInspector.on,
+html[data-page='edit-pdf-text']
+  #text-editor-app
+  .toolright
+  button[data-tool].on {
+  background: var(--rs-accent-tint);
+  border-color: transparent;
+  color: var(--ap-selected-text);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .ph {
+  font-size: 18px;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .sep {
+  height: 24px;
+  background: var(--rs-border);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .label,
+html[data-page='edit-pdf-text'] #text-editor-app .info {
+  color: var(--rs-text-2);
+}
+/* Export reads as Acrobat's primary action */
+html[data-page='edit-pdf-text'] #text-editor-app #save:not(:disabled) {
+  background: var(--rs-accent);
+  color: #fff;
+  border-radius: 16px;
+  padding: 0 14px;
+  font-weight: 700;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #save:not(:disabled):hover {
+  background: var(--rs-accent-hover);
+  color: #fff;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #save:disabled {
+  opacity: 0.45;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .btn.dirty::after {
+  background: #fff;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #save:disabled.dirty::after {
+  background: var(--ap-warning);
+}
+
+/* Tool switcher (Edit / Add text): segmented quiet group like Acrobat */
+html[data-page='edit-pdf-text'] #text-editor-app .segmented {
+  gap: 2px;
+  border: none;
+  border-radius: 6px;
+  overflow: visible;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .segmented button,
+html[data-page='edit-pdf-text'] #text-editor-app .segmented select {
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--rs-text-2);
+  font-size: 14px;
+  font-weight: 600;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .segmented button:hover,
+html[data-page='edit-pdf-text'] #text-editor-app .segmented select:hover {
+  background: var(--rs-surface-hover);
+  color: var(--rs-text);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .segmented button.on {
+  background: var(--rs-accent-tint);
+  color: var(--ap-selected-text);
+}
+/* Inside the panel, segmented controls are bordered button groups */
+html[data-page='edit-pdf-text'] #text-editor-app #inspector .segmented,
+html[data-page='edit-pdf-text'] #text-editor-app #contextbar .segmented {
+  gap: 0;
+  border: 1px solid var(--rs-border-strong);
+  border-radius: 4px;
+  overflow: hidden;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #inspector .segmented button,
+html[data-page='edit-pdf-text'] #text-editor-app #inspector .segmented select {
+  border-radius: 0;
+  border-right: 1px solid var(--rs-border);
+  background: var(--rs-field);
+}
+html[data-page='edit-pdf-text']
+  #text-editor-app
+  #inspector
+  .segmented
+  button:last-child {
+  border-right: none;
+}
+html[data-page='edit-pdf-text']
+  #text-editor-app
+  #inspector
+  .segmented
+  button:hover {
+  background: var(--rs-surface-hover);
+}
+html[data-page='edit-pdf-text']
+  #text-editor-app
+  #inspector
+  .segmented
+  button.on {
+  background: var(--rs-accent-tint);
+  color: var(--ap-selected-text);
+}
+
+/* Canvas: Acrobat grey with the white page floating on it */
+html[data-page='edit-pdf-text'] #text-editor-app #main {
+  background: var(--ap-canvas);
+}
+html[data-page='edit-pdf-text'] #text-editor-app #main::before {
+  background-image: none;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #pageWrap {
+  box-shadow: var(--ap-page-shadow);
+  outline: none;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #empty {
+  color: var(--rs-text-2);
+}
+html[data-page='edit-pdf-text'] #text-editor-app #empty h1 {
+  color: var(--rs-text);
+  font-size: 22px;
+  font-weight: 700;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .btn.big {
+  height: 36px;
+  padding: 0 20px;
+  border-radius: 18px;
+  background: var(--rs-accent);
+  border-color: var(--rs-accent);
+  color: #fff;
+  font-weight: 700;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .btn.big:hover {
+  background: var(--rs-accent-hover);
+  color: #fff;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .para-box {
+  border-color: rgb(110 110 110 / 0.55);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .multi-box,
+html[data-page='edit-pdf-text'] #text-editor-app .marquee {
+  background: rgb(59 99 251 / 0.07);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .textsel,
+html[data-page='edit-pdf-text']
+  #text-editor-app
+  .editor.pristine
+  [contenteditable]::selection,
+html[data-page='edit-pdf-text']
+  #text-editor-app
+  .editor.pristine
+  [contenteditable]
+  ::selection {
+  background: rgb(59 99 251 / 0.25);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .edit-move:hover {
+  background: rgb(59 99 251 / 0.14);
+}
+/* Rulers paint light grey with dark ticks on a canvas: invert in dark */
+@media (prefers-color-scheme: dark) {
+  html[data-page='edit-pdf-text']:not([data-theme='light'])
+    #text-editor-app
+    :is(#rulerH, #rulerV) {
+    filter: invert(0.86);
+  }
+}
+html[data-page='edit-pdf-text'][data-theme='dark']
+  #text-editor-app
+  :is(#rulerH, #rulerV) {
+  filter: invert(0.86);
+}
+
+/* Right-hand format panel, like Acrobat's Edit panel */
+html[data-page='edit-pdf-text'] #text-editor-app #inspector {
+  background: var(--rs-surface);
+  border-left: 1px solid var(--rs-border);
+  padding: 16px 16px 24px;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #inspector h2 {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--rs-text);
+  margin-bottom: 12px;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #inspector h2 .ph {
+  display: none;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .sect {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--rs-text);
+  border-top-color: var(--rs-border);
+  padding-top: 16px;
+  margin-bottom: 10px;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .field,
+html[data-page='edit-pdf-text'] #text-editor-app .rowlabel,
+html[data-page='edit-pdf-text'] #text-editor-app .chk,
+html[data-page='edit-pdf-text'] #text-editor-app .findstatus,
+html[data-page='edit-pdf-text'] #text-editor-app .barlead {
+  color: var(--rs-text-2);
+  font-size: 13px;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #inspector hr {
+  border-top-color: var(--rs-border);
+}
+
+/* Fields: 32px, 4px radius, hairline border, accent focus ring */
+html[data-page='edit-pdf-text'] #text-editor-app #inspector select,
+html[data-page='edit-pdf-text'] #text-editor-app .num,
+html[data-page='edit-pdf-text'] #text-editor-app #toolbar > select,
+html[data-page='edit-pdf-text'] #text-editor-app .viewopts select,
+html[data-page='edit-pdf-text']
+  #text-editor-app
+  #findbar
+  input:not([type='checkbox']),
+html[data-page='edit-pdf-text'] #text-editor-app #spellbar input,
+html[data-page='edit-pdf-text'] #text-editor-app .stepper,
+html[data-page='edit-pdf-text'] #text-editor-app .pagebox {
+  height: 32px;
+  background-color: var(--rs-field);
+  color: var(--rs-text);
+  border: 1px solid var(--rs-border-strong);
+  border-radius: 4px;
+  font-size: 14px;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .stepper .num {
+  height: 30px;
+  border: none;
+  background: transparent;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #inspector select {
+  padding: 0 8px;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .pagebox {
+  height: 26px;
+  font-size: 13px;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #inspector select:hover,
+html[data-page='edit-pdf-text'] #text-editor-app .stepper:hover,
+html[data-page='edit-pdf-text'] #text-editor-app .num:hover {
+  border-color: var(--rs-text-3);
+}
+html[data-page='edit-pdf-text'] #text-editor-app #inspector select:focus,
+html[data-page='edit-pdf-text'] #text-editor-app .num:focus,
+html[data-page='edit-pdf-text'] #text-editor-app #findbar input:focus,
+html[data-page='edit-pdf-text'] #text-editor-app #spellbar input:focus,
+html[data-page='edit-pdf-text'] #text-editor-app .stepper:focus-within,
+html[data-page='edit-pdf-text'] #text-editor-app .pagebox:focus {
+  border-color: var(--rs-accent);
+  box-shadow: 0 0 0 2px var(--rs-focus-ring);
+  outline: none;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .stepper .num:focus {
+  box-shadow: none;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .stepbtn {
+  color: var(--rs-text-2);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .stepbtn:hover {
+  background: var(--rs-surface-hover);
+  color: var(--rs-text);
+}
+
+/* Panel buttons (System fonts, Replace...) are Spectrum secondary buttons */
+html[data-page='edit-pdf-text'] #text-editor-app #inspector .btn,
+html[data-page='edit-pdf-text'] #text-editor-app #findbar .btn.grow,
+html[data-page='edit-pdf-text'] #text-editor-app #spellbar .btn:not(.icon) {
+  height: 32px;
+  border: 2px solid var(--rs-text-2);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--rs-text);
+  font-weight: 700;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #inspector .btn:hover,
+html[data-page='edit-pdf-text'] #text-editor-app #findbar .btn.grow:hover,
+html[data-page='edit-pdf-text']
+  #text-editor-app
+  #spellbar
+  .btn:not(.icon):hover {
+  border-color: var(--rs-text);
+  background: var(--rs-surface-hover);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .toggles button {
+  background: var(--rs-field);
+  border: 1px solid var(--rs-border-strong);
+  border-radius: 4px;
+  color: var(--rs-text-2);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .toggles button:hover {
+  background: var(--rs-surface-hover);
+  color: var(--rs-text);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .toggles button.on {
+  background: var(--rs-accent-tint);
+  border-color: var(--rs-accent);
+  color: var(--ap-selected-text);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .swatch {
+  border-color: var(--rs-border-strong);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .swatch:hover {
+  box-shadow:
+    0 0 0 2px var(--rs-surface),
+    0 0 0 4px var(--rs-accent);
+}
+html[data-page='edit-pdf-text'] #text-editor-app #fColor,
+html[data-page='edit-pdf-text'] #text-editor-app #fStrokeColor,
+html[data-page='edit-pdf-text'] #text-editor-app #pStrokeColor {
+  border-color: var(--rs-border-strong);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .chk input[type='checkbox'] {
+  accent-color: var(--rs-accent);
+}
+
+/* Find & replace / spelling bars */
+html[data-page='edit-pdf-text'] #text-editor-app #findbar,
+html[data-page='edit-pdf-text'] #text-editor-app #spellbar {
+  background: var(--rs-surface);
+  border-color: var(--rs-border);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .findtitle {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--rs-text);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .findtitle .barlead {
+  display: none;
+}
+
+/* Bottom status bar (zoom / page nav) */
+html[data-page='edit-pdf-text'] #text-editor-app #viewbar {
+  min-height: 36px;
+  background: var(--rs-surface);
+  border-top: 1px solid var(--rs-border);
+}
+html[data-page='edit-pdf-text'] #text-editor-app #viewbar .btn {
+  height: 28px;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #viewbar .btn.icon {
+  width: 28px;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .vbzoomlabel .label {
+  color: var(--rs-text);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .pagetotal {
+  color: var(--rs-text-2);
+}
+
+/* Floating bars, popovers, menus, dialogs */
+html[data-page='edit-pdf-text'] #text-editor-app #contextbar,
+html[data-page='edit-pdf-text'] #text-editor-app #zoomHud,
+html[data-page='edit-pdf-text'] #text-editor-app #vbRestore {
+  background: var(--ap-pop);
+  border: none;
+  border-radius: 8px;
+  box-shadow: var(--ap-pop-shadow);
+  backdrop-filter: none;
+  color: var(--rs-text);
+}
+html[data-page='edit-pdf-text'] #text-editor-app #vbRestore {
+  border-radius: 16px;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .ecmenu,
+html[data-page='edit-pdf-text'] #text-editor-app #docPanel {
+  background: var(--ap-pop);
+  border: none;
+  border-radius: 8px;
+  box-shadow: var(--ap-pop-shadow);
+  padding: 4px 0;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #docPanel {
+  padding: 14px;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .ecmenu-item {
+  border-radius: 0;
+  padding: 7px 14px;
+  font-size: 14px;
+  color: var(--rs-text);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .ecmenu-item:hover {
+  background: var(--rs-surface-hover);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .ecmenu-item.active {
+  color: var(--ap-selected-text);
+}
+html[data-page='edit-pdf-text'] #text-editor-app .ecmenu hr {
+  border-top-color: var(--rs-border);
+  margin: 4px 0;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .zoomcustom {
+  margin: 4px 8px;
+  background: var(--rs-field);
+  border: 1px solid var(--rs-border-strong);
+  border-radius: 4px;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #docModalOverlay {
+  background: var(--ap-scrim);
+}
+html[data-page='edit-pdf-text'] #text-editor-app #docModal {
+  background: var(--rs-surface);
+  border: none;
+  border-radius: 8px;
+  box-shadow: var(--ap-dialog-shadow);
+  padding: 24px;
+}
+html[data-page='edit-pdf-text'] #text-editor-app .docmodal-head {
+  font-size: 18px;
+  font-weight: 700;
+}
+html[data-page='edit-pdf-text'] #text-editor-app #docModal h4,
+html[data-page='edit-pdf-text'] #text-editor-app #docPanel h3 {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--rs-text);
+  border-bottom-color: var(--rs-border);
+}
+html[data-page='edit-pdf-text'] #text-editor-app #docModal dt,
+html[data-page='edit-pdf-text'] #text-editor-app #docPanel dt {
+  color: var(--rs-text-2);
+}
+html[data-page='edit-pdf-text'] #text-editor-app #toast,
+html[data-page='edit-pdf-text'] #text-editor-app .ectoast {
+  background: var(--ap-tooltip-bg);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  box-shadow: var(--ap-pop-shadow);
+}
+html[data-page='edit-pdf-text'] #text-editor-app #stage.is-scrolling,
+html[data-page='edit-pdf-text'] #text-editor-app #inspector.is-scrolling {
+  scrollbar-color: var(--rs-thumb) transparent;
+}
+html[data-page='edit-pdf-text']
+  #text-editor-app
+  #stage.is-scrolling::-webkit-scrollbar-thumb,
+html[data-page='edit-pdf-text']
+  #text-editor-app
+  #inspector.is-scrolling::-webkit-scrollbar-thumb {
+  background: var(--rs-thumb);
+  background-clip: padding-box;
+}
+
+/* Phone layout: bottom dock / sheets */
+@media (max-width: 768px) {
+  html[data-page='edit-pdf-text'] #text-editor-app #inspector,
+  html[data-page='edit-pdf-text'] #text-editor-app .dsheet,
+  html[data-page='edit-pdf-text'] #text-editor-app #findbar {
+    background: var(--rs-surface);
+    border-color: var(--rs-border);
+    box-shadow: 0 -4px 20px rgb(0 0 0 / 0.15);
+  }
+  html[data-page='edit-pdf-text'] #text-editor-app .dchip,
+  html[data-page='edit-pdf-text'] #text-editor-app .dstep,
+  html[data-page='edit-pdf-text'] #text-editor-app .dscopebtn,
+  html[data-page='edit-pdf-text'] #text-editor-app .dnavbtn {
+    background: var(--rs-field);
+    border-color: var(--rs-border-strong);
+    color: var(--rs-text-2);
+  }
+  html[data-page='edit-pdf-text'] #text-editor-app .dchip.on,
+  html[data-page='edit-pdf-text'] #text-editor-app .dscopebtn.on {
+    background: var(--rs-accent-tint);
+    border-color: var(--rs-accent);
+    color: var(--ap-selected-text);
+  }
+  html[data-page='edit-pdf-text'] #text-editor-app .dnavbtn.dgo {
+    background: var(--rs-accent);
+    border-color: var(--rs-accent);
+    color: #fff;
+  }
+  html[data-page='edit-pdf-text'] #text-editor-app .dpagepill {
+    border: 2px solid var(--rs-text-2);
+    color: var(--rs-text);
+    font-weight: 700;
+  }
+  html[data-page='edit-pdf-text'] #text-editor-app .dpageinp,
+  html[data-page='edit-pdf-text'] #text-editor-app .dsizer .stepper {
+    background: var(--rs-field);
+    border-color: var(--rs-border-strong);
+  }
+  html[data-page='edit-pdf-text'] #text-editor-app .dtitle {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--rs-text);
+  }
+  html[data-page='edit-pdf-text'] #text-editor-app .ddel {
+    color: var(--ap-danger);
+  }
+  html[data-page='edit-pdf-text'] #text-editor-app .ddim {
+    background: var(--ap-scrim);
+  }
+  html[data-page='edit-pdf-text']
+    #text-editor-app
+    .dfield
+    input[type='range']::-webkit-slider-runnable-track {
+    background: var(--rs-border-strong);
+  }
+  html[data-page='edit-pdf-text']
+    #text-editor-app
+    .dfield
+    input[type='range']::-webkit-slider-thumb {
+    background: var(--rs-surface);
+    border: 2px solid var(--rs-text-2);
+    box-shadow: none;
+  }
+  html[data-page='edit-pdf-text'] #text-editor-app #toolbar .toolright {
+    background: var(--rs-surface);
+    box-shadow: -8px 0 8px var(--rs-surface);
+  }
+}
+
+/* ================================================================== */
+/* PDF workflow builder (Rete + Lit)                                  */
+/* ================================================================== */
+
+html[data-page='pdf-workflow'] #rete-container {
+  background-color: var(--ap-canvas);
+  background-image: radial-gradient(
+    circle,
+    var(--ap-canvas-dot) 1px,
+    transparent 1.2px
+  );
+  background-size: 16px 16px;
+}
+/* Node card (inline styles from <wf-node>, hence !important) */
+html[data-page='pdf-workflow'] wf-node [style*='background: #1f2937'] {
+  background: var(--rs-surface) !important;
+  border: 1px solid var(--rs-border-strong) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s;
+}
+html[data-page='pdf-workflow'] wf-node:hover [style*='background: #1f2937'] {
+  border-color: var(--rs-text-3) !important;
+}
+html[data-page='pdf-workflow']
+  wf-node.rs-selected
+  [style*='background: #1f2937'] {
+  border-color: var(--rs-accent) !important;
+  box-shadow: 0 0 0 1px var(--rs-accent);
+}
+html[data-page='pdf-workflow']
+  wf-node
+  [style*='height: 1px; background: #374151'] {
+  background: var(--rs-border) !important;
+}
+html[data-page='pdf-workflow'] wf-node [style*='color: #f3f4f6'] {
+  color: var(--rs-text) !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+}
+html[data-page='pdf-workflow'] wf-node [style*='color: #9ca3af'] {
+  color: var(--rs-text-2) !important;
+  font-size: 12px !important;
+}
+html[data-page='pdf-workflow'] wf-node [data-wf='label'] {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+html[data-page='pdf-workflow'] wf-node [data-wf='label'][style*='#6b7280'],
+html[data-page='pdf-workflow']
+  wf-node
+  [data-wf='label'][style*='rgb(107, 114, 128)'] {
+  color: var(--rs-text-3) !important;
+}
+html[data-page='pdf-workflow'] wf-node [data-wf='dot'][style*='#6b7280'],
+html[data-page='pdf-workflow']
+  wf-node
+  [data-wf='dot'][style*='rgb(107, 114, 128)'],
+html[data-page='pdf-workflow'] wf-node [data-wf='bar'][style*='#6b7280'],
+html[data-page='pdf-workflow']
+  wf-node
+  [data-wf='bar'][style*='rgb(107, 114, 128)'] {
+  background: var(--rs-text-3) !important;
+}
+html[data-page='pdf-workflow']
+  wf-node
+  [data-wf='label'][style*='rgb(34, 197, 94)'] {
+  color: var(--ap-success) !important;
+}
+html[data-page='pdf-workflow']
+  wf-node
+  :is([data-wf='dot'], [data-wf='bar'])[style*='rgb(34, 197, 94)'] {
+  background: var(--ap-success) !important;
+}
+html[data-page='pdf-workflow']
+  wf-node
+  [data-wf='label'][style*='rgb(239, 68, 68)'] {
+  color: var(--ap-danger) !important;
+}
+html[data-page='pdf-workflow']
+  wf-node
+  [data-wf='label'][style*='rgb(234, 179, 8)'] {
+  color: color-mix(in srgb, #d29200 70%, var(--rs-text)) !important;
+}
+html[data-page='pdf-workflow'] wf-node [data-wf='bar'].wf-bar-slide {
+  background-image: linear-gradient(
+    90deg,
+    var(--rs-surface) 0%,
+    #e6a700 50%,
+    var(--rs-surface) 100%
+  ) !important;
+}
+html[data-page='pdf-workflow'] wf-node [data-wf-delete] {
+  width: 22px !important;
+  height: 22px !important;
+  color: var(--rs-text-2) !important;
+}
+html[data-page='pdf-workflow'] wf-node [data-wf-delete]:hover {
+  color: var(--ap-danger) !important;
+  background: var(--ap-danger-tint) !important;
+}
+/* Category icon colours: pastel on dark, deepened on light */
+html[data-page='pdf-workflow'] wf-node i.ph[style*='color: #'] {
+  filter: none;
+}
+html[data-page='pdf-workflow'] wf-node i.ph[style*='color: #60a5fa'] {
+  color: color-mix(in srgb, #2680eb 80%, var(--rs-text)) !important;
+}
+html[data-page='pdf-workflow'] wf-node i.ph[style*='color: #a5b4fc'] {
+  color: color-mix(in srgb, #5c5ce0 80%, var(--rs-text)) !important;
+}
+html[data-page='pdf-workflow'] wf-node i.ph[style*='color: #c4b5fd'] {
+  color: color-mix(in srgb, #9256d9 80%, var(--rs-text)) !important;
+}
+html[data-page='pdf-workflow'] wf-node i.ph[style*='color: #fcd34d'] {
+  color: color-mix(in srgb, #d97e00 80%, var(--rs-text)) !important;
+}
+html[data-page='pdf-workflow'] wf-node i.ph[style*='color: #fda4af'] {
+  color: color-mix(in srgb, #e34850 80%, var(--rs-text)) !important;
+}
+html[data-page='pdf-workflow'] wf-node i.ph[style*='color: #5eead4'] {
+  color: color-mix(in srgb, #0d9488 80%, var(--rs-text)) !important;
+}
+/* Sockets */
+html[data-page='pdf-workflow'] rete-ref [style*='background: #6366f1'] {
+  width: 12px !important;
+  height: 12px !important;
+  background: var(--rs-surface) !important;
+  border: 2px solid var(--rs-accent) !important;
+  box-shadow: none !important;
+  transition: background-color 0.12s;
+}
+html[data-page='pdf-workflow'] rete-ref [style*='background: #6366f1']:hover {
+  background: var(--rs-accent) !important;
+}
+
+/* Toolbox: category headings in Acrobat's neutral heading style */
+html[data-page='pdf-workflow'] #toolbox-categories .toolbox-category > button {
+  color: var(--rs-text-2);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+html[data-page='pdf-workflow'] .toolbox-node-item {
+  font-size: 13px;
+  color: var(--rs-text);
+  border-radius: 4px;
+}
+html[data-page='pdf-workflow'] .toolbox-node-item i {
+  color: var(--rs-text-2);
+  font-size: 16px;
+}
+html[data-page='pdf-workflow'] .toolbox-node-item:hover {
+  background: var(--rs-surface-hover);
+}
+
+/* ================================================================== */
+/* Markdown to PDF editor                                              */
+/* ================================================================== */
+
+html[data-page='markdown-to-pdf'] .md-editor .theme-toggle {
+  display: none;
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rs-border);
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--rs-font);
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-btn-secondary {
+  background: transparent;
+  color: var(--rs-text);
+  border: 2px solid var(--rs-text-2);
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-btn-secondary:hover {
+  background: var(--rs-surface-hover);
+  border-color: var(--rs-text);
+  color: var(--rs-text);
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-btn-primary {
+  background: var(--rs-accent);
+  color: #fff;
+  border: 2px solid var(--rs-accent);
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-btn-primary:hover {
+  background: var(--rs-accent-hover);
+  border-color: var(--rs-accent-hover);
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-main {
+  gap: 0;
+  border: 1px solid var(--rs-border);
+  border-radius: 8px;
+  background: var(--rs-surface);
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-pane {
+  background: var(--rs-surface);
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-pane:first-child {
+  border-right: 1px solid var(--rs-border);
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-pane-header {
+  padding: 0 16px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  background: var(--rs-surface);
+  color: var(--rs-text);
+  font-size: 14px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--rs-border);
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-textarea {
+  background: var(--rs-field);
+  color: var(--rs-text);
+  caret-color: var(--rs-accent);
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-textarea::placeholder {
+  color: var(--rs-text-3);
+}
+/* The preview reads like a page on the canvas */
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-preview {
+  background: var(--rs-surface);
+  color: var(--rs-text);
+  font-family: var(--rs-font);
+  font-size: 15px;
+}
+html[data-page='markdown-to-pdf']
+  .md-editor
+  .md-editor-preview
+  :is(h1, h2, h3, h4, h5, h6, th) {
+  color: var(--rs-text);
+}
+html[data-page='markdown-to-pdf']
+  .md-editor
+  .md-editor-preview
+  :is(h1, h2, hr, th, td, .footnotes) {
+  border-color: var(--rs-border);
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-preview a {
+  color: var(--ap-selected-text);
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-preview code {
+  background: var(--rs-surface-hover);
+  color: var(--rs-text);
+  border: 1px solid var(--rs-border);
+}
+html[data-page='markdown-to-pdf']
+  .md-editor
+  .md-editor-preview
+  :is(pre, .table-of-contents, .mermaid-diagram) {
+  background: var(--rs-bg);
+  border-color: var(--rs-border);
+  border-radius: 6px;
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-preview pre code {
+  background: none;
+  border: none;
+  color: var(--rs-text);
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-preview blockquote {
+  color: var(--rs-text-2);
+  border-left-color: var(--rs-border-strong);
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-preview th,
+html[data-page='markdown-to-pdf']
+  .md-editor
+  .md-editor-preview
+  tr:nth-child(even) {
+  background: var(--rs-bg);
+}
+/* Settings dialog */
+html[data-page='markdown-to-pdf'] .md-editor-modal-overlay {
+  background: var(--ap-scrim);
+}
+html[data-page='markdown-to-pdf'] .md-editor-modal {
+  background: var(--rs-surface);
+  border: none;
+  border-radius: 8px;
+  box-shadow: var(--ap-dialog-shadow);
+  padding: 24px 28px;
+}
+html[data-page='markdown-to-pdf'] .md-editor-modal-title {
+  color: var(--rs-text);
+  font-size: 20px;
+  font-weight: 700;
+}
+html[data-page='markdown-to-pdf'] .md-editor-modal-close {
+  color: var(--rs-text-2);
+  border-radius: 6px;
+}
+html[data-page='markdown-to-pdf'] .md-editor-modal-close:hover {
+  background: var(--rs-surface-hover);
+  color: var(--rs-text);
+}
+html[data-page='markdown-to-pdf'] .md-editor-settings-group h3 {
+  color: var(--rs-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+html[data-page='markdown-to-pdf'] .md-editor-checkbox {
+  color: var(--rs-text);
+  font-size: 14px;
+}
+html[data-page='markdown-to-pdf'] .md-editor-checkbox:hover {
+  color: var(--rs-text);
+}
+html[data-page='markdown-to-pdf'] .md-editor-settings-group select {
+  height: 32px;
+  padding: 0 8px;
+  background: var(--rs-field);
+  color: var(--rs-text);
+  border: 1px solid var(--rs-border-strong);
+  border-radius: 4px;
+  font-size: 14px;
+}
+html[data-page='markdown-to-pdf'] .md-editor-settings-group select:focus {
+  border-color: var(--rs-accent);
+  box-shadow: 0 0 0 2px var(--rs-focus-ring);
+}
+@media (max-width: 768px) {
+  html[data-page='markdown-to-pdf'] .md-editor .md-editor-pane:first-child {
+    border-right: none;
+    border-bottom: 1px solid var(--rs-border);
+  }
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-preview ul {
+  list-style: disc;
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-preview ol {
+  list-style: decimal;
+}
+html[data-page='markdown-to-pdf'] .md-editor .md-editor-btn {
+  justify-content: center;
+}
+
+/* ================================================================== */
+/* Edit bookmarks — upstream built these panels LIGHT (bg-white,       */
+/* gray-100 buttons, gray-700 text). Re-point the grey ramp at tokens  */
+/* inside them so they work in both themes.                            */
+/* ================================================================== */
+
+html[data-page='bookmark']
+  :is(#viewer-section, #bookmarks-section, #modal-container, .modal-overlay) {
+  --color-gray-50: var(--rs-bg);
+  --color-gray-100: var(--rs-surface-hover);
+  --color-gray-200: var(--rs-border);
+  --color-gray-300: var(--rs-border-strong);
+  --color-gray-400: var(--rs-text-3);
+  --color-gray-500: var(--rs-text-3);
+  --color-gray-600: var(--rs-text-2);
+  --color-gray-700: var(--rs-text);
+  --color-gray-800: var(--rs-text);
+  --color-gray-900: var(--rs-text);
+  --color-white: #ffffff;
+  /* Tints for bookmark colours, mixed into the surface (both themes) */
+  --color-red-50: color-mix(in srgb, #e34850 10%, var(--rs-surface));
+  --color-red-100: color-mix(in srgb, #e34850 16%, var(--rs-surface));
+  --color-red-300: color-mix(in srgb, #e34850 55%, var(--rs-surface));
+  --color-red-600: color-mix(in srgb, #e34850 80%, var(--rs-text));
+  --color-blue-50: var(--rs-accent-tint);
+  --color-blue-100: var(--rs-accent-tint);
+  --color-blue-200: color-mix(in srgb, var(--rs-accent) 35%, var(--rs-surface));
+  --color-blue-300: color-mix(in srgb, var(--rs-accent) 50%, var(--rs-surface));
+  --color-blue-400: var(--rs-accent);
+  --color-blue-500: var(--rs-accent);
+  --color-blue-600: var(--ap-selected-text);
+  --color-blue-800: var(--ap-selected-text);
+  --color-green-100: color-mix(in srgb, #2d9d78 16%, var(--rs-surface));
+  --color-green-300: color-mix(in srgb, #2d9d78 55%, var(--rs-surface));
+  --color-green-600: color-mix(in srgb, #2d9d78 80%, var(--rs-text));
+  --color-yellow-100: color-mix(in srgb, #e6c400 22%, var(--rs-surface));
+  --color-yellow-300: color-mix(in srgb, #e6c400 60%, var(--rs-surface));
+  --color-yellow-600: color-mix(in srgb, #b58a00 85%, var(--rs-text));
+  --color-purple-100: color-mix(in srgb, #9256d9 16%, var(--rs-surface));
+  --color-purple-300: color-mix(in srgb, #9256d9 55%, var(--rs-surface));
+  --color-purple-600: color-mix(in srgb, #9256d9 80%, var(--rs-text));
+}
+/* Text on these light-built panels is dark-on-light by default */
+html[data-page='bookmark'] :is(#viewer-section, #bookmarks-section) {
+  color: var(--rs-text);
+}
+html[data-page='bookmark'] :is(#viewer-section, #bookmarks-section) .bg-white,
+html[data-page='bookmark'] .modal-content {
+  background-color: var(--rs-surface);
+  color: var(--rs-text);
+}
+html[data-page='bookmark']
+  :is(#viewer-section, #bookmarks-section)
+  > .bg-white {
+  border: 1px solid var(--rs-border);
+  border-radius: 8px;
+  box-shadow: none;
+}
+html[data-page='bookmark'] .modal-overlay {
+  background: var(--ap-scrim);
+}
+html[data-page='bookmark'] .modal-content {
+  border-radius: 8px;
+  box-shadow: var(--ap-dialog-shadow);
+}
+html[data-page='bookmark'] .modal-minimized {
+  box-shadow: var(--ap-pop-shadow);
+}
+html[data-page='bookmark'] #bookmarks-section h3 {
+  font-size: 16px;
+}
+/* The gradient "secondary" buttons become Spectrum secondary pills */
+html[data-page='bookmark'] [class*='bg-gradient-to-b'][class*='from-gray-100'] {
+  background: transparent;
+  border: 2px solid var(--rs-text-2);
+  border-radius: 16px;
+  color: var(--rs-text);
+  font-weight: 700;
+  box-shadow: none;
+}
+html[data-page='bookmark']
+  [class*='bg-gradient-to-b'][class*='from-gray-100']:hover {
+  background: var(--rs-surface-hover);
+  border-color: var(--rs-text);
+}
+html[data-page='bookmark'] #import-dropdown [class*='bg-gradient-to-b'] {
+  background: transparent;
+  box-shadow: none;
+}
+html[data-page='bookmark'] :is(#import-dropdown, #export-dropdown) {
+  background: var(--ap-pop);
+  border: none;
+  border-radius: 8px;
+  box-shadow: var(--ap-pop-shadow);
+  padding: 4px 0;
+}
+html[data-page='bookmark'] :is(#import-dropdown, #export-dropdown) button {
+  border-radius: 0;
+  color: var(--rs-text);
+}
+html[data-page='bookmark']
+  :is(#import-dropdown, #export-dropdown)
+  button:hover {
+  background: var(--rs-surface-hover);
+}
+/* Viewer toolbar: quiet square icon buttons */
+html[data-page='bookmark'] #viewer-section button.bg-gray-100 {
+  background: transparent;
+  border-radius: 6px;
+  color: var(--rs-text-2);
+}
+html[data-page='bookmark'] #viewer-section button.bg-gray-100:hover {
+  background: var(--rs-surface-hover);
+}
+html[data-page='bookmark'] #viewer-section button.bg-gray-100 svg {
+  color: var(--rs-text-2);
+}
+html[data-page='bookmark'] #canvas-container {
+  background: var(--ap-canvas);
+  border-color: var(--rs-border);
+}
+html[data-page='bookmark'] #pdf-canvas {
+  box-shadow: var(--ap-page-shadow);
+}
+html[data-page='bookmark']
+  :is(#viewer-section, #bookmarks-section, .modal-content)
+  :is(input:not([type='checkbox'], [type='radio'], [type='color']), select) {
+  min-height: 32px;
+  background-color: var(--rs-field);
+  color: var(--rs-text);
+  border: 1px solid var(--rs-border-strong);
+  border-radius: 4px;
+}
+html[data-page='bookmark'] #goto-btn {
+  border-radius: 16px;
+  font-weight: 700;
+  padding-inline: 14px;
+  background: var(--rs-accent);
+  color: #fff;
+}
+html[data-page='bookmark'] #bookmark-tree-list > li > div,
+html[data-page='bookmark'] .child-container > li > div {
+  border-radius: 4px;
+}
+html[data-page='bookmark'] .child-container::before,
+html[data-page='bookmark'] .child-container > li::before {
+  background: var(--rs-border-strong);
+}
+html[data-page='bookmark'] .style-preview {
+  border-color: var(--rs-border);
+}
+html[data-page='bookmark'] .sortable-ghost {
+  border-color: var(--rs-accent);
+}
+html[data-page='bookmark'] .destination-overlay {
+  border-color: var(--rs-accent);
+  background: rgb(59 99 251 / 0.1);
+}
+/* Mobile viewer/bookmarks switch reads as tabs with an underline */
+html[data-page='bookmark'] :is(#show-viewer-btn, #show-bookmarks-btn) {
+  background: transparent;
+  color: var(--rs-text-2);
+  border-bottom: 2px solid transparent;
+  font-weight: 700;
+}
+html[data-page='bookmark']
+  :is(#show-viewer-btn, #show-bookmarks-btn).bg-indigo-600 {
+  color: var(--rs-text);
+  border-bottom-color: var(--rs-text);
+}
+html[data-page='bookmark'] #extract-existing-btn {
+  min-height: 36px;
+  background: transparent;
+  border: 2px solid var(--rs-text-2);
+  border-radius: 18px;
+  color: var(--rs-text);
+  font-weight: 700;
+  box-shadow: none;
+}
+html[data-page='bookmark'] #extract-existing-btn:hover {
+  background: var(--rs-surface-hover);
+  border-color: var(--rs-text);
+}
+html[data-page='bookmark'] .modal-content button.bg-gray-200 {
+  background: transparent;
+  border: 2px solid var(--rs-text-2);
+  border-radius: 999px;
+  color: var(--rs-text);
+  font-weight: 700;
+}
+html[data-page='bookmark'] .modal-content button.bg-gray-200:hover {
+  background: var(--rs-surface-hover);
+  border-color: var(--rs-text);
+}
+
+/* ================================================================== */
+/* Compare PDFs — light panels + slate sidebar unified on tokens       */
+/* ================================================================== */
+
+html[data-page='compare-pdfs'] .compare-viewer-wrapper,
+html[data-page='compare-pdfs'] .compare-viewer-wrapper.side-by-side-mode,
+html[data-page='compare-pdfs'] .compare-viewer-wrapper.overlay-mode {
+  background: var(--ap-canvas);
+  border-color: var(--rs-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+html[data-page='compare-pdfs'] .compare-panel {
+  background: var(--ap-canvas);
+}
+html[data-page='compare-pdfs'] .compare-viewer-wrapper.overlay-mode #panel-2 {
+  background: transparent;
+}
+html[data-page='compare-pdfs']
+  .compare-viewer-wrapper.side-by-side-mode
+  #panel-1 {
+  border-right: 1px solid var(--rs-border);
+}
+html[data-page='compare-pdfs'] .compare-panel-label {
+  background: var(--rs-surface);
+  color: var(--rs-text);
+  border-bottom: 1px solid var(--rs-border);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  backdrop-filter: none;
+}
+html[data-page='compare-pdfs'] .compare-canvas-stage canvas {
+  box-shadow: var(--ap-page-shadow);
+}
+html[data-page='compare-pdfs']
+  .compare-viewer-wrapper.overlay-mode
+  #panel-2
+  .compare-canvas-stage
+  canvas {
+  box-shadow: none;
+}
+html[data-page='compare-pdfs'] .compare-placeholder {
+  background: var(--rs-surface);
+  border-color: var(--rs-border-strong);
+  color: var(--rs-text-2);
+  border-radius: 8px;
+}
+html[data-page='compare-pdfs'] .compare-highlight.active {
+  outline-color: var(--rs-accent);
+}
+
+/* Changes panel (Acrobat-style right panel) */
+html[data-page='compare-pdfs'] .compare-sidebar {
+  background: var(--rs-surface);
+  border: 1px solid var(--rs-border);
+  border-radius: 8px;
+}
+html[data-page='compare-pdfs'] .compare-sidebar-header,
+html[data-page='compare-pdfs'] .compare-sidebar-filters {
+  border-bottom: 1px solid var(--rs-border);
+}
+html[data-page='compare-pdfs'] .compare-sidebar-header {
+  padding: 10px 12px;
+}
+html[data-page='compare-pdfs'] .compare-filter-group {
+  gap: 6px;
+  padding: 8px 12px;
+}
+html[data-page='compare-pdfs'] .compare-filter-group + .compare-filter-group {
+  border-top: 1px solid var(--rs-border);
+}
+html[data-page='compare-pdfs'] .compare-filter-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--rs-text-2);
+}
+html[data-page='compare-pdfs'] #compare-search-input {
+  height: 32px;
+  background: var(--rs-field);
+  border: 1px solid var(--rs-border-strong);
+  border-radius: 4px;
+  color: var(--rs-text);
+}
+html[data-page='compare-pdfs'] .compare-pill {
+  --pill: var(--rs-accent);
+  height: 24px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--pill) 75%, var(--rs-text));
+  background: transparent;
+  border: 1px solid var(--rs-border-strong);
+}
+html[data-page='compare-pdfs'] .compare-pill:hover {
+  background: var(--rs-surface-hover);
+}
+html[data-page='compare-pdfs'] .compare-pill.active {
+  background: color-mix(in srgb, var(--pill) 14%, var(--rs-surface));
+  border-color: color-mix(in srgb, var(--pill) 60%, var(--rs-surface));
+}
+html[data-page='compare-pdfs'] .compare-pill.removed {
+  --pill: #e34850;
+}
+html[data-page='compare-pdfs'] .compare-pill.added {
+  --pill: #2d9d78;
+}
+html[data-page='compare-pdfs'] .compare-pill.modified {
+  --pill: #e68619;
+}
+html[data-page='compare-pdfs'] .compare-pill.moved {
+  --pill: #9256d9;
+}
+html[data-page='compare-pdfs'] .compare-pill.style-changed {
+  --pill: #2680eb;
+}
+html[data-page='compare-pdfs'] .compare-pill.category {
+  --pill: var(--rs-accent);
+  color: var(--rs-text);
+}
+html[data-page='compare-pdfs'] .compare-change-item {
+  border: 1px solid var(--rs-border);
+  border-radius: 4px;
+  color: var(--rs-text);
+  font-size: 13px;
+}
+html[data-page='compare-pdfs'] .compare-change-item:hover {
+  background: var(--rs-surface-hover);
+  border-color: var(--rs-border-strong);
+}
+html[data-page='compare-pdfs'] .compare-change-item.active {
+  background: var(--rs-accent-tint);
+  border-color: var(--rs-accent);
+}
+html[data-page='compare-pdfs'] .compare-change-desc {
+  color: var(--rs-text);
+}
+html[data-page='compare-pdfs'] .compare-section-label {
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 700;
+}
+html[data-page='compare-pdfs'] .compare-section-label:is(.added, .page-added) {
+  color: color-mix(in srgb, #2d9d78 80%, var(--rs-text));
+}
+html[data-page='compare-pdfs']
+  .compare-section-label:is(.removed, .page-removed) {
+  color: color-mix(in srgb, #e34850 80%, var(--rs-text));
+}
+html[data-page='compare-pdfs'] .compare-section-label.modified {
+  color: color-mix(in srgb, #e68619 80%, var(--rs-text));
+}
+html[data-page='compare-pdfs'] .compare-section-label.moved {
+  color: color-mix(in srgb, #9256d9 80%, var(--rs-text));
+}
+html[data-page='compare-pdfs'] .compare-section-label.style-changed {
+  color: color-mix(in srgb, #2680eb 80%, var(--rs-text));
+}
+html[data-page='compare-pdfs'] .compare-section-count,
+html[data-page='compare-pdfs'] .compare-change-empty {
+  color: var(--rs-text-3);
+}
+html[data-page='compare-pdfs'] .compare-section-line {
+  background: var(--rs-border);
+}
+/* Toolbar above the viewer: flat bar with quiet buttons */
+html[data-page='compare-pdfs'] #compare-viewer > div:first-child {
+  background: var(--rs-surface);
+  border-color: var(--rs-border);
+  border-radius: 8px;
+}
+html[data-page='compare-pdfs']
+  #compare-viewer
+  > div:first-child
+  .btn.bg-gray-700,
+html[data-page='compare-pdfs']
+  #compare-viewer
+  > div:first-child
+  :is(#prev-change-btn, #next-change-btn, #zoom-reset-btn, #flicker-btn) {
+  background: transparent;
+  color: var(--rs-text-2);
+  border: 0;
+  border-radius: 6px;
+  min-height: 30px;
+  min-width: 30px;
+  display: inline-grid;
+  place-items: center;
+}
+html[data-page='compare-pdfs']
+  #compare-viewer
+  > div:first-child
+  .btn.bg-gray-700:hover:not(:disabled) {
+  background: var(--rs-surface-hover);
+  color: var(--rs-text);
+}
+html[data-page='compare-pdfs'] #compare-viewer > div:first-child > .bg-gray-700,
+html[data-page='compare-pdfs'] #overlay-controls > .bg-gray-700 {
+  background: transparent;
+  border: 1px solid var(--rs-border-strong);
+  border-radius: 6px;
+}
+html[data-page='compare-pdfs']
+  :is(
+    #view-mode-overlay,
+    #view-mode-side,
+    #overlay-scope-all,
+    #overlay-scope-content-only
+  ) {
+  background: transparent;
+  color: var(--rs-text-2);
+  border: 0;
+  border-radius: 4px;
+  min-height: 26px;
+}
+html[data-page='compare-pdfs']
+  :is(
+    #view-mode-overlay,
+    #view-mode-side,
+    #overlay-scope-all,
+    #overlay-scope-content-only
+  ).bg-indigo-600 {
+  background: var(--rs-accent-tint);
+  color: var(--ap-selected-text);
+}
+html[data-page='compare-pdfs'] #export-dropdown-btn {
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 13px;
+  padding-inline: 14px;
+}
+html[data-page='compare-pdfs'] #export-dropdown-menu {
+  background: var(--ap-pop);
+  border: none;
+  border-radius: 8px;
+  box-shadow: var(--ap-pop-shadow);
+}
+html[data-page='compare-pdfs'] #export-dropdown-menu .export-menu-item {
+  color: var(--rs-text);
+}
+html[data-page='compare-pdfs'] #export-dropdown-menu .export-menu-item:hover {
+  background: var(--rs-surface-hover);
+}
+
+/* ================================================================== */
+/* PDF layers (OCG) — Acrobat "Layers" panel                           */
+/* ================================================================== */
+
+html[data-page='pdf-layers'] .layers-container {
+  background: var(--rs-surface);
+  border: 1px solid var(--rs-border);
+  border-radius: 8px;
+  padding: 16px;
+}
+html[data-page='pdf-layers'] .layers-list {
+  border: 1px solid var(--rs-border);
+  border-radius: 4px;
+}
+html[data-page='pdf-layers'] .layer-item {
+  min-height: 40px;
+  padding-block: 6px;
+  padding-right: 8px;
+  border-bottom: 1px solid var(--rs-border);
+}
+html[data-page='pdf-layers'] .layer-item:hover {
+  background: var(--rs-surface-hover);
+}
+html[data-page='pdf-layers'] .layer-toggle input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--rs-accent);
+}
+html[data-page='pdf-layers'] .layer-name {
+  color: var(--rs-text);
+  font-size: 14px;
+}
+html[data-page='pdf-layers'] .layer-actions button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  color: var(--rs-text-2);
+  border-radius: 6px;
+  font-size: 16px;
+}
+html[data-page='pdf-layers'] .layer-actions button:hover {
+  background: var(--rs-surface-hover);
+  color: var(--rs-text);
+}
+html[data-page='pdf-layers'] .layer-actions .layer-delete:hover {
+  background: var(--ap-danger-tint) !important;
+  color: var(--ap-danger);
+}
+html[data-page='pdf-layers'] .layers-empty {
+  color: var(--rs-text-2);
+}
+html[data-page='pdf-layers'] .add-layer-form input {
+  height: 32px;
+  padding: 0 10px;
+  background: var(--rs-field);
+  border: 1px solid var(--rs-border-strong);
+  border-radius: 4px;
+  color: var(--rs-text);
+}
+html[data-page='pdf-layers'] .add-layer-form input:focus {
+  border-color: var(--rs-accent);
+  box-shadow: 0 0 0 2px var(--rs-focus-ring);
+  outline: none;
+}
+html[data-page='pdf-layers'] .add-layer-form button {
+  height: 32px;
+  padding: 0 16px;
+  background: transparent;
+  border: 2px solid var(--rs-text-2);
+  border-radius: 16px;
+  color: var(--rs-text);
+  font-weight: 700;
+}
+html[data-page='pdf-layers'] .add-layer-form button:hover {
+  background: var(--rs-surface-hover);
+  border-color: var(--rs-text);
+}
+/* Name prompt dialog */
+html[data-page='pdf-layers'] #input-modal > div {
+  background: var(--rs-surface);
+  border: 0;
+  border-radius: 8px;
+  box-shadow: var(--ap-dialog-shadow);
+  padding: 24px;
+}
+html[data-page='pdf-layers'] #input-title {
+  font-size: 18px;
+}
+html[data-page='pdf-layers'] #input-message {
+  color: var(--rs-text-2);
+}
+html[data-page='pdf-layers'] #input-value {
+  height: 32px;
+  padding: 0 10px;
+  background: var(--rs-field);
+  border: 1px solid var(--rs-border-strong);
+  border-radius: 4px;
+}
+html[data-page='pdf-layers'] #input-cancel {
+  background: transparent;
+  border: 2px solid var(--rs-text-2);
+  border-radius: 16px;
+  color: var(--rs-text);
+  font-weight: 700;
+}
+html[data-page='pdf-layers'] #input-confirm {
+  border-radius: 16px;
+  font-weight: 700;
+}
+
+/* ================================================================== */
+/* Form creator — Acrobat "Prepare a form"                             */
+/* ================================================================== */
+
+/* Panels and bars: flat white surfaces with hairlines */
+html[data-page='form-creator'] #tool-container .bg-gray-700.rounded-lg {
+  background: var(--rs-surface);
+  border: 1px solid var(--rs-border);
+  border-radius: 8px;
+}
+/* Page area: grey canvas with the white page on it */
+html[data-page='form-creator']
+  #tool-container
+  main
+  > .bg-gray-700.overflow-auto {
+  background: var(--ap-canvas);
+}
+html[data-page='form-creator'] #pdfCanvasWrapper {
+  border-color: transparent !important;
+  box-shadow: var(--ap-page-shadow);
+}
+html[data-page='form-creator'] #tool-container h3 {
+  color: var(--rs-text);
+  font-size: 16px;
+  font-weight: 700;
+}
+/* Field tools: quiet buttons, selected = accent tint */
+html[data-page='form-creator'] .tool-item {
+  background: transparent;
+  color: var(--rs-text);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+html[data-page='form-creator'] .tool-item .text-xs {
+  font-size: 13px;
+}
+html[data-page='form-creator'] .tool-item svg {
+  color: var(--rs-text-2);
+}
+html[data-page='form-creator'] .tool-item:hover {
+  background: var(--rs-surface-hover);
+}
+html[data-page='form-creator'] .tool-item.bg-indigo-600 {
+  background: var(--rs-accent-tint);
+  color: var(--ap-selected-text);
+  --tw-ring-color: var(--rs-accent);
+  box-shadow: none;
+  outline: 1px solid var(--rs-accent);
+}
+html[data-page='form-creator'] .tool-item.bg-indigo-600 svg {
+  color: var(--ap-selected-text);
+}
+/* Toolbar icon buttons (page nav, grid) */
+html[data-page='form-creator'] :is(#prevPageBtn, #nextPageBtn, #toggleGridBtn) {
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--rs-text-2);
+}
+html[data-page='form-creator']
+  :is(#prevPageBtn, #nextPageBtn, #toggleGridBtn):hover:not(:disabled) {
+  background: var(--rs-surface-hover);
+  color: var(--rs-text);
+}
+html[data-page='form-creator'] #resetBtn {
+  border-width: 2px;
+  border-color: var(--rs-text-2);
+  font-weight: 700;
+}
+html[data-page='form-creator'] #gotoPageBtn,
+html[data-page='form-creator'] #addPageBtn {
+  border-radius: 16px;
+  font-weight: 700;
+  padding-inline: 14px;
+}
+/* Properties panel */
+html[data-page='form-creator'] #propertiesPanel label,
+html[data-page='form-creator'] #propertiesPanel .text-gray-300 {
+  color: var(--rs-text-2);
+  font-size: 12px;
+}
+html[data-page='form-creator'] #propertiesPanel div.bg-gray-600.rounded {
+  background: transparent;
+  padding-inline: 0;
+}
+html[data-page='form-creator'] #propertiesPanel div.bg-gray-700.rounded {
+  background: var(--rs-bg);
+  border: 1px solid var(--rs-border);
+}
+html[data-page='form-creator'] #propertiesPanel button.bg-gray-500 {
+  background: var(--rs-border-strong);
+}
+html[data-page='form-creator'] #propertiesPanel button.bg-red-600 {
+  border-radius: 16px;
+  background: transparent;
+  border: 2px solid var(--ap-danger);
+  color: var(--ap-danger);
+}
+html[data-page='form-creator'] #propertiesPanel button.bg-red-600:hover {
+  background: var(--ap-danger-tint);
+}
+html[data-page='form-creator'] #propertiesPanel .bg-blue-900\/30 {
+  background: var(--rs-accent-tint);
+  border-color: color-mix(in srgb, var(--rs-accent) 40%, transparent);
+}
+html[data-page='form-creator'] #propertiesPanel .text-blue-200 {
+  color: var(--ap-selected-text);
+}
+html[data-page='form-creator'] #fieldCount {
+  color: var(--rs-text);
+}
+/* Field type gallery in the panel (icons + captions) */
+html[data-page='form-creator'] #propertiesPanel .text-gray-400 {
+  color: var(--rs-text-3);
+}
+/* The page is always white: field previews keep light-theme blues/greys */
+html[data-page='form-creator'] #pdfCanvas {
+  --color-indigo-50: #edf1ff;
+  --color-indigo-200: #c3cfff;
+  --color-indigo-300: #8fa5ff;
+  --color-indigo-400: #5c7cff;
+  --color-indigo-500: #3b63fb;
+  --color-indigo-600: #3b63fb;
+  --color-gray-300: #c6c6c6;
+  --color-gray-400: #8e8e8e;
+  --color-gray-500: #6e6e6e;
+  --color-gray-600: #505050;
+  --color-gray-700: #3e3e3e;
+  --color-white: #ffffff;
+  color: #222;
+}
+html[data-page='form-creator'] #toggleGridBtn.bg-indigo-600 {
+  background: var(--rs-accent-tint);
+  color: var(--ap-selected-text);
+}
+
+/* ================================================================== */
+/* PDF multi tool — Acrobat "Organize pages"                           */
+/* ================================================================== */
+
+/* Flat toolbar with quiet icon+label buttons */
+html[data-page='pdf-multi-tool'] .toolbar-container {
+  background: var(--rs-surface);
+  border-bottom: 1px solid var(--rs-border);
+  padding: 6px 12px;
+}
+html[data-page='pdf-multi-tool'] .toolbar-container > div {
+  background: transparent;
+  padding: 0;
+  gap: 2px;
+  row-gap: 4px;
+  border-radius: 0;
+}
+html[data-page='pdf-multi-tool'] .toolbar-container span.text-gray-400 {
+  display: none;
+}
+html[data-page='pdf-multi-tool'] .toolbar-container .border-l {
+  height: 24px;
+  margin-inline: 6px;
+  border-color: var(--rs-border);
+}
+html[data-page='pdf-multi-tool'] .toolbar-container button {
+  min-height: 32px;
+  padding: 0 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--rs-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+html[data-page='pdf-multi-tool'] .toolbar-container button svg {
+  width: 18px;
+  height: 18px;
+  color: var(--rs-text-2);
+}
+html[data-page='pdf-multi-tool']
+  .toolbar-container
+  button:hover:not(:disabled) {
+  background: var(--rs-surface-hover);
+}
+html[data-page='pdf-multi-tool']
+  .toolbar-container
+  button:active:not(:disabled) {
+  background: var(--rs-surface-active);
+}
+html[data-page='pdf-multi-tool'] .toolbar-container #bulk-delete-btn,
+html[data-page='pdf-multi-tool'] .toolbar-container #bulk-delete-btn svg {
+  color: var(--ap-danger);
+}
+html[data-page='pdf-multi-tool'] .toolbar-container #bulk-download-btn {
+  border: 2px solid var(--rs-text-2);
+  border-radius: 16px;
+  font-weight: 700;
+  margin-left: 4px;
+}
+html[data-page='pdf-multi-tool'] .toolbar-container #export-pdf-btn {
+  background: var(--rs-accent);
+  color: #fff;
+  border-radius: 16px;
+  font-weight: 700;
+  margin-left: 6px;
+}
+html[data-page='pdf-multi-tool'] .toolbar-container #export-pdf-btn svg {
+  color: #fff;
+}
+html[data-page='pdf-multi-tool']
+  .toolbar-container
+  #export-pdf-btn:hover:not(:disabled) {
+  background: var(--rs-accent-hover);
+}
+html[data-page='pdf-multi-tool'] #close-tool-btn {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--rs-text-2);
+  font-weight: 600;
+}
+html[data-page='pdf-multi-tool'] #close-tool-btn:hover {
+  background: var(--rs-surface-hover);
+  color: var(--rs-text);
+}
+
+/* Grey canvas with white page thumbnails */
+html[data-page='pdf-multi-tool'] #main-scroll-container {
+  background: var(--ap-canvas);
+}
+html[data-page='pdf-multi-tool'] #pages-container {
+  gap: 8px;
+}
+html[data-page='pdf-multi-tool'] #pages-container > div {
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 10px 10px 6px;
+  box-shadow: none;
+  --tw-ring-shadow: 0 0 #0000;
+}
+html[data-page='pdf-multi-tool'] #pages-container > div:hover {
+  background: var(--rs-surface-hover);
+}
+html[data-page='pdf-multi-tool'] #pages-container > div.border-indigo-500 {
+  border-color: var(--rs-accent);
+  background: var(--rs-accent-tint);
+}
+html[data-page='pdf-multi-tool'] #pages-container > div > div:first-child {
+  background: transparent;
+  overflow: visible;
+}
+html[data-page='pdf-multi-tool']
+  #pages-container
+  > div
+  > div:first-child.bg-gray-700 {
+  background: var(--rs-surface);
+  border-radius: 2px;
+}
+html[data-page='pdf-multi-tool'] #pages-container canvas {
+  background: #fff;
+  box-shadow: var(--ap-page-shadow);
+}
+html[data-page='pdf-multi-tool'] #pages-container .text-center.text-xs {
+  color: var(--rs-text);
+  font-size: 13px;
+  margin-top: 8px;
+}
+html[data-page='pdf-multi-tool']
+  #pages-container
+  > div.border-indigo-500
+  .text-center.text-xs {
+  color: var(--ap-selected-text);
+  font-weight: 700;
+}
+/* Hover action bar and select box */
+html[data-page='pdf-multi-tool'] #pages-container .bg-gray-900\/90 {
+  background: var(--ap-pop);
+  border-radius: 6px;
+  box-shadow: var(--ap-pop-shadow);
+  padding: 2px 4px;
+}
+html[data-page='pdf-multi-tool'] #pages-container .bg-gray-900\/90 button {
+  padding: 4px;
+  border-radius: 4px;
+}
+html[data-page='pdf-multi-tool']
+  #pages-container
+  .bg-gray-900\/90
+  button:hover {
+  background: var(--rs-surface-hover);
+}
+html[data-page='pdf-multi-tool']
+  #pages-container
+  .bg-gray-900\/90
+  .text-gray-300 {
+  color: var(--rs-text-2);
+}
+html[data-page='pdf-multi-tool']
+  #pages-container
+  .bg-gray-900\/90
+  .text-red-400 {
+  color: var(--ap-danger);
+}
+html[data-page='pdf-multi-tool'] #pages-container button.bg-gray-900\/70 {
+  background: var(--rs-surface);
+  border: 1px solid var(--rs-border-strong);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
+}
+html[data-page='pdf-multi-tool']
+  #pages-container
+  button.bg-gray-900\/70
+  .text-gray-200 {
+  color: var(--rs-text-2);
+}
+html[data-page='pdf-multi-tool']
+  #pages-container
+  button.bg-gray-900\/70
+  .text-indigo-400 {
+  color: var(--rs-accent);
+}
+html[data-page='pdf-multi-tool'] .split-marker .border-blue-400 {
+  border-color: var(--rs-accent);
+}
+html[data-page='pdf-multi-tool'] #upload-area {
+  border-color: var(--rs-border-strong);
+  background: var(--rs-surface);
+  border-radius: 8px;
+}
+/* Dialogs */
+html[data-page='pdf-multi-tool'] :is(#modal, #loading-overlay) {
+  background: var(--ap-scrim);
+}
+html[data-page='pdf-multi-tool'] :is(#modal, #loading-overlay) > div {
+  background: var(--rs-surface);
+  border: 0;
+  border-radius: 8px;
+  box-shadow: var(--ap-dialog-shadow);
+}
+html[data-page='pdf-multi-tool'] #modal-close-btn {
+  border-radius: 16px;
+  font-weight: 700;
+}
+html[data-page='pdf-multi-tool'] #loading-overlay .bg-gray-700.rounded-full {
+  background: var(--rs-border);
+}
+html[data-page='pdf-multi-tool'] .toolbar-container #bulk-download-btn {
+  margin-left: auto;
+}

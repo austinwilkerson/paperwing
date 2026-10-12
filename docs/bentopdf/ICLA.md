@@ -93,8 +93,8 @@ By submitting a pull request or other Contribution to the Project, and by typing
 
 **Date:** 20-12-2025
 
-**Signature:** ___________________________
+**Signature:** ************\_\_\_************
 
 ---
 
-*This CLA is based on the Apache Individual Contributor License Agreement and has been adapted for BentoPDF's dual licensing model.*
+_This CLA is based on the Apache Individual Contributor License Agreement and has been adapted for BentoPDF's dual licensing model._

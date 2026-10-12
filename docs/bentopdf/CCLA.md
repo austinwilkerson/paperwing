@@ -103,21 +103,21 @@ This Agreement shall be governed by and construed in accordance with the laws of
 
 By signing this Agreement, You confirm that You have the authority to bind the legal entity named below, and that entity agrees to the terms of this Corporate Contributor License Agreement.
 
-**Legal Entity Name:** ___________________________
+**Legal Entity Name:** ************\_\_\_************
 
-**Address:** ___________________________
+**Address:** ************\_\_\_************
 
-**Point of Contact Name:** ___________________________
+**Point of Contact Name:** ************\_\_\_************
 
-**Point of Contact Email:** ___________________________
+**Point of Contact Email:** ************\_\_\_************
 
-**Point of Contact Phone:** ___________________________
+**Point of Contact Phone:** ************\_\_\_************
 
-**Signature:** ___________________________
+**Signature:** ************\_\_\_************
 
-**Title:** ___________________________
+**Title:** ************\_\_\_************
 
-**Date:** ___________________________
+**Date:** ************\_\_\_************
 
 ---
 
@@ -126,15 +126,15 @@ By signing this Agreement, You confirm that You have the authority to bind the l
 The following individuals are authorized to submit Contributions to the Project on behalf of the above-named legal entity:
 
 | Full Name | GitHub Username | Email Address | Date Added |
-|-----------|-----------------|---------------|------------|
+| --------- | --------------- | ------------- | ---------- |
 |           |                 |               |            |
 |           |                 |               |            |
 |           |                 |               |            |
 |           |                 |               |            |
 |           |                 |               |            |
 
-*Add additional rows as needed. To update this list, contact the Project Owner at contact@bentopdf.com*
+_Add additional rows as needed. To update this list, contact the Project Owner at contact@bentopdf.com_
 
 ---
 
-*This CLA is based on the Apache Corporate Contributor License Agreement and has been adapted for BentoPDF's dual licensing model.*
+_This CLA is based on the Apache Corporate Contributor License Agreement and has been adapted for BentoPDF's dual licensing model._

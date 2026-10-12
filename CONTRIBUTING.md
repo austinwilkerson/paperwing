@@ -1,153 +1,54 @@
-# Contributing to BentoPDF
+# Contributing to Paperwing
 
-First off, thank you for considering contributing to **BentoPDF**! Your help makes this project better for everyone.
+Thanks for helping make Paperwing better! Bug reports, ideas, documentation fixes and pull requests
+are all welcome.
 
-This document outlines how to contribute, report issues, and get involved in the project.
+## Reporting bugs and suggesting features
 
----
+Use the [issue templates](https://github.com/rohanvijaykumar/paperwing/issues/new/choose). For bugs,
+please include your Paperwing version (**Menu ▸ About Paperwing**), your OS, the steps to reproduce,
+and — if you can share it — a PDF that shows the problem.
 
-## Contributor License Agreement (CLA)
+**Engine or interface?** Paperwing's PDF tools come from [BentoPDF](https://github.com/alam00000/bentopdf).
+If a tool produces the wrong _output_ (e.g. a conversion loses formatting), the fix usually belongs
+upstream; open the issue here anyway and we'll help route it. Problems with the workspace, themes,
+shortcuts, installers or anything that looks wrong are Paperwing issues.
 
-Before we can accept your contributions, you must sign our Contributor License Agreement (CLA). This is required because BentoPDF uses a dual licensing model:
+## Development setup
 
-- **AGPL-3.0** for open source use
-- **Commercial license** for proprietary use
+See [docs/BUILDING.md](docs/BUILDING.md). In short:
 
-The CLA ensures we can include your contributions in both versions of the project.
+```bash
+npm ci && (cd desktop && npm ci)
+cd desktop && npm run dev
+```
 
-### For Individual Contributors
+## Guidelines
 
-Sign our [Individual Contributor License Agreement (ICLA)](ICLA.md). When you submit your first pull request, the CLA Assistant bot will automatically ask you to sign by commenting on the PR.
+- **Keep the engine untouched.** Paperwing code lives in `app.html`, `src/acro/`, `src/reskin/`,
+  `reskin/` and `desktop/`. Avoid editing BentoPDF's files under `src/js`, `src/pages`, `public/`
+  etc. — style or hook them from the integration layer instead, so upstream updates merge cleanly.
+  Engine improvements are best contributed to BentoPDF directly.
+- **Follow the design language.** New UI should match the existing Acrobat-style look in both light
+  and dark themes: use the CSS tokens (`--surface`, `--text`, `--accent`… in the shell, `--rs-*` in
+  tool pages), 32 px controls, pill-shaped buttons and the Source Sans 3 typeface.
+- **Keep it light and private.** No telemetry, accounts, trackers or heavyweight dependencies.
+- **Shortcuts** are defined once in `src/acro/keymap.ts`; run `npm run docs:shortcuts` in `desktop/`
+  to regenerate `docs/SHORTCUTS.md` after changing them.
+- **Test your change:** `npx tsc --noEmit -p .`, `npx vitest run`, and the end-to-end suite
+  (`npm run test:e2e` in `desktop/`) for interface changes. Add tests for new behaviour.
+- Pre-commit hooks run ESLint and Prettier on staged files.
 
-### For Corporate Contributors
+## Pull requests
 
-If you are contributing on behalf of your employer, your organization needs to sign our [Corporate Contributor License Agreement (CCLA)](CCLA.md). Please contact us at [contact@bentopdf.com](mailto:contact@bentopdf.com) to arrange corporate CLA signing.
+1. Fork the repository and create a branch from `main`.
+2. Make focused commits with clear messages.
+3. Describe what changed and why, with screenshots for visual changes (light and dark).
+4. Make sure the checks pass.
 
-### What the CLA Grants
+By contributing you agree that your contributions are licensed under the project's
+[AGPL-3.0 license](LICENSE).
 
-By signing the CLA, you:
+## Code of conduct
 
-- Grant us a broad copyright license to use, modify, and relicense your contributions (including for commercial use)
-- Grant a patent license for any patents covering your contribution
-- Represent that you have the authority to make the contribution
-- Retain full copyright ownership of your contributions
-
----
-
-## 1. How to Contribute
-
-You can contribute in several ways:
-
-- **Reporting Bugs:** If you find a bug or unexpected behavior, please open an issue. Include steps to reproduce and any relevant screenshots or logs.
-- **Feature Requests:** Suggest new features or improvements by opening an issue and describing your idea clearly.
-- **Code Contributions:** Submit a pull request with new features, bug fixes, or improvements.
-- **Documentation:** Help improve the README, usage examples, or guides.
-- **Testing:** Help test new releases or changes to ensure stability.
-
----
-
-### Issue Template
-
-When reporting bugs, requesting features, or asking questions, please use our [issue template](.github/ISSUE_TEMPLATE/bug_feature_question.md). The template will automatically appear when you create a new issue.
-
-**Our issue template helps you provide:**
-
-- Clear categorization (Bug, Feature Request, or Question)
-- Steps to reproduce (for bugs)
-- Expected vs actual behavior
-- Environment details
-- Screenshots or logs
-
-**Title Format Examples:**
-
-- `(Bug) Text alignment incorrect on multi-line paragraphs`
-- `(Feature) Add support for custom PDF metadata`
-- `(Question) How to embed custom fonts?`
-
-### Pull Request Template
-
-When submitting code contributions, please use our [pull request template](.github/pull_request_template.md). The template will automatically appear when you create a new PR.
-
-**Key requirements:**
-
-- Link to the related issue (e.g., `Fixes #123`)
-- Describe the type of change (bug fix, feature, breaking change)
-- Explain how you tested your changes
-- Complete the checklist before submitting
-
-## 2. Getting Started with Code Contributions
-
-1.  **Fork the Repository**
-
-    ```bash
-    git clone https://github.com/alam00000/bentopdf.git
-    cd bentopdf
-    npm install
-    ```
-
-2.  **Create a New Branch**
-
-    ```bash
-    git checkout -b feature/my-new-feature
-    ```
-
-3.  **Make Your Changes**
-    - Follow the code style and conventions used in the project.
-    - Add comments where necessary.
-    - Update or add tests if applicable.
-
-4.  **Run Tests**
-
-    ```bash
-    npm run test
-    ```
-
-5.  **Commit Your Changes**
-
-    ```bash
-    git add .
-    git commit -m "Add a meaningful commit message"
-    ```
-
-6.  **Push and Submit a Pull Request**
-
-    ```bash
-    git push origin feature/my-new-feature
-    ```
-
-    - Open a pull request on GitHub and provide a clear description of your changes.
-
----
-
-## 3. Code Style
-
-- Follow the existing TypeScript and JavaScript conventions.
-- Use `camelCase` for variables and functions.
-- Keep lines reasonably short and readable.
-- Comment complex logic for clarity.
-
----
-
-## 4. Issues and Pull Requests
-
-- Make sure your PR is focused and addresses a single issue or feature.
-- Reference related issues in your PR description (e.g., `Closes #12`).
-- Be responsive to feedback and make requested changes promptly.
-
----
-
-## 5. Reporting Security Issues
-
-If you discover a security vulnerability, please **do not** open a public issue. Instead, contact the project maintainer directly at:
-
-**Email:** [contact@bentopdf.com](mailto:contact@bentopdf.com)
-
----
-
-## 6. Code of Conduct
-
-All contributors are expected to follow the Code of Conduct. Be respectful and considerate in all communications.
-
----
-
-Thank you for helping make **BentoPDF** a better library for everyone!
+Please be kind and constructive. See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
