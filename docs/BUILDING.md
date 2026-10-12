@@ -2,12 +2,12 @@
 
 ## Repository layout
 
-Paperwing is a fork of [BentoPDF](https://github.com/alam00000/bentopdf) that keeps the engine
+Paperwing is a fork of [BentoPDF](https://github.com/alam00000/bentopdf) that keeps BentoPDF's code
 untouched and adds three layers on top:
 
 | Path                     | What it is                                                                                                                                   |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/`, `public/`, …     | **BentoPDF engine** — the 100+ tool pages and their logic (upstream code)                                                                    |
+| `src/`, `public/`, …     | **BentoPDF** — the 100+ tool pages and all PDF processing (upstream code)                                                                    |
 | `app.html`, `src/acro/`  | **Paperwing workspace** — tabs, Home, All tools, document view, shortcuts, preferences                                                       |
 | `src/reskin/`, `reskin/` | **Integration layer** — Acrobat-style light/dark theme for every tool page, frame embedding, a Vite plugin that injects it all at build time |
 | `desktop/`               | **Electron app** — window, `app://` protocol, file associations, native dialogs, packaging                                                   |
@@ -22,7 +22,7 @@ The only upstream source file that Paperwing modifies is `vite.config.ts` (two l
 - Google Chrome or Chromium for the end-to-end tests
 
 ```bash
-npm ci                 # in the repository root (engine)
+npm ci                 # in the repository root (BentoPDF)
 cd desktop && npm ci   # desktop shell
 ```
 
@@ -47,7 +47,7 @@ System Access API instead of native dialogs; everything else behaves the same.
 ## Testing
 
 ```bash
-npx vitest run                         # unit tests (engine + src/tests/paperwing-shell.test.ts)
+npx vitest run                         # unit tests (BentoPDF + src/tests/paperwing-shell.test.ts)
 npx tsc --noEmit -p .                  # type check
 
 # End-to-end UI tests (in desktop/), against a running dev server or preview:
@@ -60,14 +60,27 @@ the open document, theming of tool pages, and more. Set `CHROME_PATH` if Chrome 
 
 ## Packaging
 
-| Command (in `desktop/`) | Output in `desktop/release/`                                                                 |
-| ----------------------- | -------------------------------------------------------------------------------------------- |
-| `npm run dist:win`      | `Paperwing-Setup-<v>-x64.exe`, `Paperwing-Portable-<v>-x64.exe`, `Paperwing-<v>-win-x64.zip` |
-| `npm run dist:mac`      | `Paperwing-<v>-mac-arm64.dmg`, `…-mac-x64.dmg` and matching `.zip`s (must run on macOS)      |
-| `npm run pack`          | Unpacked app folder only, for quick checks                                                   |
+| Command (in `desktop/`) | Output in `desktop/release/`                                                            |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| `npm run dist:win`      | `Paperwing-Setup-<v>-x64.exe` and `Paperwing-Portable-<v>-win-x64.zip`                  |
+| `npm run dist:mac`      | `Paperwing-<v>-mac-arm64.dmg`, `…-mac-x64.dmg` and matching `.zip`s (must run on macOS) |
+| `npm run pack`          | Unpacked app folder only, for quick checks                                              |
 
 Packaging is configured in `desktop/electron-builder.yml`. The app icon is generated from
 `desktop/build/icon.svg` (`icon.png`, 1024 px, is what electron-builder uses).
+
+### Keeping the download small
+
+- **LibreOffice is downloaded on demand.** `soffice.wasm.gz` and `soffice.data.gz` (~77 MB) are
+  left out of the package. `npm run build:web` writes `desktop/engines.json` with their sizes,
+  SHA-256 hashes and a release tag derived from their content (`engine-libreoffice-<hash>`). When a
+  tool first asks for them, `main.cjs` downloads them from that release on GitHub, verifies the hash
+  and caches them in the user data folder. The release workflow uploads them automatically.
+  To test against a local copy, serve `public/libreoffice-wasm/` and start the app with
+  `PAPERWING_ENGINE_BASE=http://localhost:<port>`.
+- **Pre-compressed `.br`/`.gz` copies** that Vite emits for web servers are deleted after the build.
+- **Chromium trimming:** English locales only (`electronLanguages`), maximum compression, and
+  `scripts/after-pack.cjs` removes the DirectX shader compiler DLLs used only by WebGPU.
 
 ### Code signing (optional)
 
@@ -94,6 +107,9 @@ In GitHub Actions, add these as repository secrets and expose them as environmen
    ```
 4. The **Release desktop apps** workflow builds Windows and macOS on GitHub's runners (about
    15–25 minutes) and creates a **draft release** with all installers and a `SHA256SUMS.txt`.
+   It also publishes the LibreOffice engine files to an `engine-libreoffice-<hash>` pre-release
+   if that engine version hasn't been published yet. Leave that pre-release in place: installed
+   apps download from it.
 5. Open the draft on GitHub, check the notes and assets, and click **Publish release**.
 
 The in-app update check compares against the latest _published_ release of the repository set in

@@ -14,6 +14,9 @@
         if (t === 'light' || t === 'dark')
           document.documentElement.dataset.theme = t;
       } catch (e) {}
+      // The desktop app shows its own launch window instead
+      if (window.paperwing)
+        document.documentElement.classList.add('in-desktop');
     </script>
     <style>
       /* Launch screen: inline so it paints on the very first frame */
@@ -25,6 +28,9 @@
         place-items: center;
         background: #f3f3f3;
         transition: opacity 0.22s ease;
+      }
+      .in-desktop #splash {
+        display: none;
       }
       #splash.is-done {
         opacity: 0;
@@ -133,7 +139,7 @@
         <div class="sp-brand"><img src="/paperwing.svg" alt="" />Paperwing</div>
         <div class="sp-status">Starting…</div>
         <div class="sp-credit">
-          <span>Powered by the BentoPDF engine · Free &amp; open source</span>
+          <span>Built on BentoPDF · Free &amp; open source</span>
           <span id="sp-version"></span>
         </div>
       </div>

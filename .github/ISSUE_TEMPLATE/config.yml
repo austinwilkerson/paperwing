@@ -3,9 +3,9 @@ contact_links:
   - name: 📖 Installation help
     url: https://github.com/rohanvijaykumar/paperwing/blob/main/docs/INSTALL.md
     about: Unsigned-app warnings on Windows and macOS, portable mode, default PDF app
-  - name: 🍱 BentoPDF engine
+  - name: 🍱 BentoPDF (the tools Paperwing is built on)
     url: https://github.com/alam00000/bentopdf/issues
-    about: Issues that also happen in BentoPDF itself can be reported upstream
+    about: Problems with a tool's output that also happen in BentoPDF itself can be reported upstream
   - name: 🔒 Security vulnerability
     url: https://github.com/rohanvijaykumar/paperwing/security/advisories/new
     about: Please report security issues privately

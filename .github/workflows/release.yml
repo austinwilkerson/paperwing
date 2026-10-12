@@ -45,7 +45,7 @@ jobs:
             package-lock.json
             desktop/package-lock.json
 
-      - name: Install engine dependencies
+      - name: Install BentoPDF dependencies
         run: npm ci
 
       - name: Install desktop dependencies
@@ -70,9 +70,34 @@ jobs:
             desktop/release/*.zip
             desktop/release/*.dmg
 
+  # LibreOffice (~77 MB) isn't in the installers; the app downloads it the
+  # first time an Office -> PDF tool is used. Publish it once per engine
+  # version as a pre-release (so it never shows up as the "latest" release).
+  engine:
+    name: Publish on-demand engine files
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Upload engine files
+        run: |
+          TAG=$(node desktop/scripts/engine-info.mjs --tag)
+          echo "Engine release: $TAG"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG"             --prerelease --target "$GITHUB_SHA"             --title "Engine files ($TAG)"             --notes "Downloaded automatically by Paperwing the first time you convert a Word, Excel or PowerPoint file. You don't need to download anything here."
+          gh release upload "$TAG" --clobber             public/libreoffice-wasm/soffice.wasm.gz             public/libreoffice-wasm/soffice.data.gz
+
   release:
     name: Create draft release
-    needs: build
+    needs: [build, engine]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:

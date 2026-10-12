@@ -2,7 +2,7 @@
 
 Paperwing is a desktop PDF application built on top of **[BentoPDF](https://github.com/alam00000/bentopdf)**.
 
-## BentoPDF — the PDF engine
+## BentoPDF — what Paperwing is built on
 
 All PDF processing in Paperwing (the 100+ tools, the viewer integration, the
 WebAssembly engines and their configuration) comes from BentoPDF.

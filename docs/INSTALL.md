@@ -25,19 +25,24 @@ whichever suits you.
 The installer adds Start-menu and desktop shortcuts and offers Paperwing as an app for opening PDFs.
 To make it your default PDF app: **Settings ▸ Apps ▸ Default apps**, search for `.pdf` and choose Paperwing.
 
-### Portable (single .exe)
+### Portable (.zip)
 
-`Paperwing-Portable-<version>-x64.exe` runs without installing anything — handy on a USB stick or a
-computer where you can't install software. Your settings are kept in a **Paperwing Data** folder next
-to the file. The first launch takes a few seconds while it unpacks.
+`Paperwing-Portable-<version>-win-x64.zip` runs without installing anything — handy on a USB stick or
+a computer where you can't install software.
 
-### Portable folder (.zip)
+1. Unzip it anywhere (right-click ▸ **Extract All…**).
+2. Run `Paperwing.exe` inside the folder.
 
-1. Unzip `Paperwing-<version>-win-x64.zip` anywhere.
-2. Run `Paperwing.exe`.
+Settings, recent files and downloaded engines are kept in a **Paperwing Data** folder inside it, so
+the whole folder can move between computers. (If the folder isn't writable, for example under
+`C:\Program Files`, Paperwing uses your user profile instead.)
 
-By default settings are stored in your user profile. To keep them inside the folder instead (fully
-portable), create an empty folder named **Paperwing Data** next to `Paperwing.exe`.
+### First Office conversion
+
+To keep the download small, the LibreOffice engine used by **Word / Excel / PowerPoint → PDF** isn't
+included. The first time you use one of those tools, Paperwing downloads it (about 75 MB) and keeps
+it for next time, so you need an internet connection once. Everything else works offline from the
+start.
 
 ---
 
@@ -72,12 +77,12 @@ To open PDFs with Paperwing by default: select any PDF in Finder ▸ **File ▸ 
 
 Paperwing checks this project's GitHub Releases once a day and shows a notice when a new version is
 out (you can turn this off in **Menu ▸ Preferences**). Download the new version and install it over
-the old one — your settings, recent files and pinned tools are kept. Portable users can simply replace
-the `.exe` / folder.
+the old one — your settings, recent files and pinned tools are kept. Portable users can unzip the new
+version and copy their **Paperwing Data** folder into it.
 
 ## Uninstalling
 
 - **Windows installer:** Settings ▸ Apps ▸ Installed apps ▸ Paperwing ▸ Uninstall.
-- **Windows portable:** delete the `.exe` (or folder) and its **Paperwing Data** folder.
+- **Windows portable:** delete the folder.
 - **macOS:** drag Paperwing from Applications to the Bin. Settings live in
   `~/Library/Application Support/Paperwing` if you want to remove them too.

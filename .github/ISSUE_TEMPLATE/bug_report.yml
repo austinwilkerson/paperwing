@@ -46,7 +46,6 @@ body:
       label: How did you install it?
       options:
         - Windows installer
-        - Windows portable (.exe)
         - Windows portable (.zip)
         - macOS .dmg
         - Built from source

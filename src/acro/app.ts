@@ -1,6 +1,6 @@
 /**
  * Paperwing: a desktop PDF workspace (Home, All tools and tabbed document
- * views) around the BentoPDF engine's viewer and tool pages.
+ * views) around BentoPDF's viewer and tool pages, which do the PDF work.
  */
 import '@phosphor-icons/web/duotone';
 import { icon, toolIcon, type IconName } from './icons';
@@ -1894,9 +1894,9 @@ function showAbout() {
       h(
         'p',
         {},
-        'PDF engine: ',
+        'Built on ',
         link('https://github.com/alam00000/bentopdf', 'BentoPDF'),
-        ` ${__APP_VERSION__}, with the EmbedPDF viewer, PDFium, pdf-lib, PDF.js and other open-source projects.`
+        ` ${__APP_VERSION__}: every tool and all PDF processing come from BentoPDF, using the EmbedPDF viewer, PDFium, pdf-lib, PDF.js, qpdf, LibreOffice and other open-source projects. Paperwing adds this interface and the desktop app.`
       ),
       h(
         'p',

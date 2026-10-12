@@ -1,8 +1,9 @@
 ## Paperwing 1.0 — the free, open-source alternative to Adobe Acrobat
 
-Paperwing brings a familiar Acrobat-style desktop workspace to Windows and macOS — powered by the
-[BentoPDF](https://github.com/alam00000/bentopdf) engine, fully offline, with no account and no
-subscription.
+Paperwing brings a familiar Acrobat-style desktop workspace to Windows and macOS. It's built on
+[BentoPDF](https://github.com/alam00000/bentopdf): every tool and all PDF processing come from
+BentoPDF, running locally on your computer, and Paperwing adds the desktop app and interface. No
+account, no subscription.
 
 ### Highlights
 
@@ -13,16 +14,16 @@ subscription.
 - **Light & dark themes** that follow your system
 - **Acrobat keyboard shortcuts**, including single-key tool accelerators
 - **Command palette**, pinned tools, unsaved-change protection, session restore and reopen closed tab
-- **Portable Windows build** — run it from a USB stick
+- **Portable Windows build** — unzip and run, from a USB stick if you like
 
 ### Downloads
 
-|                     |                                                             |
-| ------------------- | ----------------------------------------------------------- |
-| Windows installer   | `Paperwing-Setup-*-x64.exe`                                 |
-| Windows portable    | `Paperwing-Portable-*-x64.exe` or `Paperwing-*-win-x64.zip` |
-| macOS Apple Silicon | `Paperwing-*-mac-arm64.dmg`                                 |
-| macOS Intel         | `Paperwing-*-mac-x64.dmg`                                   |
+|                     |                                    |
+| ------------------- | ---------------------------------- |
+| Windows installer   | `Paperwing-Setup-*-x64.exe`        |
+| Windows portable    | `Paperwing-Portable-*-win-x64.zip` |
+| macOS Apple Silicon | `Paperwing-*-mac-arm64.dmg`        |
+| macOS Intel         | `Paperwing-*-mac-x64.dmg`          |
 
 These builds aren't code-signed yet. On Windows choose **More info ▸ Run anyway**; on macOS
 right-click the app and choose **Open** the first time. Full instructions:

@@ -12,7 +12,7 @@ offline, with no account, no subscription and no upsells.
 [![Latest release](https://img.shields.io/github/v/release/rohanvijaykumar/paperwing?label=download&color=D7193A)](https://github.com/rohanvijaykumar/paperwing/releases/latest)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS-555)](#download)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
-[![Powered by BentoPDF](https://img.shields.io/badge/engine-BentoPDF-6b5bed)](https://github.com/alam00000/bentopdf)
+[![Built on BentoPDF](https://img.shields.io/badge/built%20on-BentoPDF-6b5bed)](https://github.com/alam00000/bentopdf)
 
 <br />
 
@@ -35,11 +35,13 @@ monthly bill. Every feature is free, and your files never leave your computer.
 | -------------------------------------------- | ------------------ | ------------ |
 | Price                                        | **Free, forever**  | Subscription |
 | Account required                             | **No**             | Yes          |
-| Works fully offline                          | **Yes**            | Partly       |
+| Works offline                                | **Yes**¹           | Partly       |
 | Upsell / AI pop-ups                          | **None**           | Frequent     |
 | Open source                                  | **Yes (AGPL-3.0)** | No           |
 | Portable (no install) on Windows             | **Yes**            | No           |
 | Familiar Acrobat-style workspace & shortcuts | **Yes**            | —            |
+
+¹ A few tools fetch their engine once on first use; see [Privacy](#privacy).
 
 > Paperwing is an independent project and is not affiliated with or endorsed by Adobe.
 > See [Trademarks](#trademarks).
@@ -55,7 +57,7 @@ monthly bill. Every feature is free, and your files never leave your computer.
 - Right rail with comments, bookmarks, page thumbnails, find, page navigation, rotate and zoom
 - **Light and dark themes** that follow your system automatically (neutral, Acrobat-style dark mode)
 
-**120+ tools, powered by the [BentoPDF](https://github.com/alam00000/bentopdf) engine**
+**120+ tools from [BentoPDF](https://github.com/alam00000/bentopdf)**
 
 - **Edit** — edit text & images, annotate, redact, watermarks, headers & footers, page numbers, Bates numbering, bookmarks, stamps, crop
 - **Convert** — PDF to Word, Excel, images, text, Markdown, JSON; Word, Excel, PowerPoint, images, ebooks, email, Markdown and 30+ formats to PDF
@@ -66,7 +68,7 @@ monthly bill. Every feature is free, and your files never leave your computer.
 **Designed around Acrobat's most common complaints**
 
 - 🔒 **Private by default** — everything runs locally; no account, telemetry or uploads
-- ⚡ **Fast and light** — opens in about a second, with the PDF engine warmed up in the background
+- ⚡ **Fast and light** — opens in about a second, with the PDF viewer warmed up in the background
 - ⌨️ **Acrobat shortcuts** — including the single-key tool accelerators (H, V, S, U, D, X…), on by default
 - 🔎 **Command palette** — <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> finds any tool or command instantly
 - 📌 **Pin your tools** — pinned and recently used tools sit at the top of the tools panel
@@ -80,13 +82,12 @@ monthly bill. Every feature is free, and your files never leave your computer.
 
 Get the latest version from the **[Releases page](https://github.com/rohanvijaykumar/paperwing/releases/latest)**.
 
-| Platform                      | File                                   | Notes                                              |
-| ----------------------------- | -------------------------------------- | -------------------------------------------------- |
-| **Windows** — installer       | `Paperwing-Setup-<version>-x64.exe`    | Start-menu entry, file association, uninstaller    |
-| **Windows** — portable        | `Paperwing-Portable-<version>-x64.exe` | Single file, no install, settings stored beside it |
-| **Windows** — portable folder | `Paperwing-<version>-win-x64.zip`      | Unzip anywhere and run `Paperwing.exe`             |
-| **macOS** — Apple Silicon     | `Paperwing-<version>-mac-arm64.dmg`    | M1 / M2 / M3 / M4 Macs                             |
-| **macOS** — Intel             | `Paperwing-<version>-mac-x64.dmg`      | Intel Macs                                         |
+| Platform                  | File                                       | Notes                                                               |
+| ------------------------- | ------------------------------------------ | ------------------------------------------------------------------- |
+| **Windows** — installer   | `Paperwing-Setup-<version>-x64.exe`        | Start-menu entry, file association, uninstaller                     |
+| **Windows** — portable    | `Paperwing-Portable-<version>-win-x64.zip` | Unzip anywhere and run `Paperwing.exe`; settings stay in the folder |
+| **macOS** — Apple Silicon | `Paperwing-<version>-mac-arm64.dmg`        | M1 / M2 / M3 / M4 Macs                                              |
+| **macOS** — Intel         | `Paperwing-<version>-mac-x64.dmg`          | Intel Macs                                                          |
 
 Paperwing isn't code-signed yet, so Windows SmartScreen and macOS Gatekeeper will warn the first time
 you open it. See **[Installation](docs/INSTALL.md)** for the one-time steps.
@@ -131,9 +132,32 @@ All PDF processing happens on your computer. Paperwing has no accounts, analytic
 The only network requests it makes are:
 
 - an optional, once-a-day check of this repository's GitHub Releases for updates (can be turned off in **Preferences**);
+- the **Word, Excel and PowerPoint → PDF** converters download the LibreOffice engine (about 75 MB,
+  once) from this repository's GitHub Releases the first time you use them. It's left out of the
+  installer to keep the download small, and it's checked against a SHA-256 hash before it's used;
 - a few advanced tools (PDF/A conversion, font outlining and some extraction tools) download their
   open-source engines from a CDN the first time you use them, as in BentoPDF;
 - the text editor may fetch fallback fonts from a CDN when a document uses fonts that aren't embedded.
+
+## How Paperwing works
+
+Paperwing is a fork of BentoPDF. BentoPDF is a web app: each of its tools is a page that processes
+PDFs in the browser with open-source libraries compiled to WebAssembly, so nothing is uploaded.
+Paperwing keeps that code unchanged and adds three layers around it:
+
+| Layer           | What it does                                                                                                                                  | Code                            |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| **BentoPDF**    | All PDF work: the 100+ tools, plus the document viewer (EmbedPDF on PDFium), pdf-lib, PDF.js, qpdf, Tesseract OCR, LibreOffice and more       | `src/js`, `src/pages`, `public` |
+| **Workspace**   | The Acrobat-style interface: tabs, Home, the searchable tools sidebar, the viewer workspace, shortcuts, preferences                           | `app.html`, `src/acro/`         |
+| **Integration** | Restyles every BentoPDF tool page (light/dark, Acrobat look) and connects it to the workspace: passes the open file in and catches the result | `src/reskin/`, `reskin/`        |
+| **Desktop app** | Electron: serves the built app from disk, native open/save dialogs, file associations, launch screen, portable mode                           | `desktop/`                      |
+
+When you open a PDF, it appears in BentoPDF's viewer. When you pick a tool, Paperwing loads that
+BentoPDF tool page beside the document and hands it your file. BentoPDF's code does the work on your
+computer, and Paperwing opens the result in a new tab or saves it where you choose.
+
+Apart from two lines in `vite.config.ts` that register Paperwing's build plugin, BentoPDF's code is
+included unmodified, so new BentoPDF releases can be merged in directly.
 
 ## Build from source
 
@@ -142,7 +166,7 @@ You need [Node.js](https://nodejs.org) 22 or newer.
 ```bash
 git clone https://github.com/rohanvijaykumar/paperwing.git
 cd paperwing
-npm ci                      # engine dependencies
+npm ci                      # BentoPDF dependencies
 cd desktop && npm ci        # desktop shell dependencies
 npm run dev                 # build the web app and launch Paperwing
 ```
@@ -151,10 +175,11 @@ Packaging, testing and the release process are covered in **[docs/BUILDING.md](d
 
 ## Credits
 
-Paperwing stands on the shoulders of **[BentoPDF](https://github.com/alam00000/bentopdf)** by
-[Alam](https://github.com/alam00000) and contributors. BentoPDF provides the PDF engine — every one of
-the 100+ tools, the WebAssembly processing pipeline and the integration of PDFium, PDF.js, pdf-lib,
-qpdf, LibreOffice and more. Paperwing adds the desktop application and Acrobat-style interface on top.
+Paperwing is built on **[BentoPDF](https://github.com/alam00000/bentopdf)** by
+[Alam](https://github.com/alam00000) and contributors. BentoPDF provides every one of the 100+ tools
+and all of the PDF processing, including its integration of PDFium, PDF.js, pdf-lib, qpdf, LibreOffice
+and more. Paperwing adds the desktop application and the Acrobat-style interface on top (see
+[How Paperwing works](#how-paperwing-works)).
 
 If Paperwing is useful to you, please consider
 **[sponsoring BentoPDF's author](https://github.com/sponsors/alam00000)** ❤️
@@ -165,8 +190,8 @@ Full third-party notices are in [NOTICE.md](NOTICE.md). BentoPDF's original READ
 ## Contributing
 
 Bug reports, ideas and pull requests are welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)**.
-Issues with an individual PDF tool's output often belong to the engine; we'll help route them
-upstream to BentoPDF.
+Problems with an individual tool's output usually come from BentoPDF's tool code; we'll help route
+them upstream.
 
 ## License
 

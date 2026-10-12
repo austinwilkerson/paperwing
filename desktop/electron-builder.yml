@@ -10,6 +10,8 @@ directories:
 files:
   - main.cjs
   - preload.cjs
+  - splash.html
+  - engines.json
   - package.json
 
 # The web app (built from the repository root into ../dist) ships unpacked
@@ -20,8 +22,10 @@ extraResources:
     filter:
       - '**/*'
       - '!**/*.map'
-      - '!**/*.gz'
-      - '!**/*.br'
+      # LibreOffice (~77 MB, used only by the Office → PDF tools) is
+      # downloaded on first use instead; see scripts/engine-info.mjs.
+      - '!libreoffice-wasm/soffice.wasm.gz'
+      - '!libreoffice-wasm/soffice.data.gz'
   - from: ../LICENSE
     to: LICENSE.txt
   - from: ../NOTICE.md
@@ -36,15 +40,22 @@ fileAssociations:
 
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 
+# Keep the download small: English UI strings only, best compression, and
+# drop Chromium components Paperwing never uses (see scripts/after-pack.cjs).
+electronLanguages: [en-US, en]
+compression: maximum
+afterPack: scripts/after-pack.cjs
+
 win:
   icon: build/icon.png
   target:
     - target: nsis
       arch: [x64]
-    - target: portable
-      arch: [x64]
+    # The portable build. (A self-extracting "portable" .exe was dropped: it
+    # unpacks the whole app on every launch, which takes 30+ seconds.)
     - target: zip
       arch: [x64]
+  artifactName: ${productName}-Portable-${version}-win-x64.${ext}
 
 nsis:
   oneClick: false
@@ -56,8 +67,6 @@ nsis:
   artifactName: ${productName}-Setup-${version}-x64.${ext}
   license: ../LICENSE
 
-portable:
-  artifactName: ${productName}-Portable-${version}-x64.${ext}
 
 mac:
   icon: build/icon.png

@@ -6,9 +6,16 @@
  * desktop app doesn't need.
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, rmSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import {
+  existsSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { engineInfo } from './engine-info.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const dist = resolve(root, 'dist');
@@ -42,4 +49,35 @@ if (!existsSync(resolve(dist, 'app.html'))) {
   console.error('Build finished but dist/app.html is missing.');
   process.exit(1);
 }
+// The build also writes .br/.gz copies of most files for web servers. The
+// desktop app serves files itself, so drop the copies (but keep real .gz
+// sources such as LibreOffice's, which have no uncompressed sibling).
+let removed = 0;
+let saved = 0;
+const walk = (dir) => {
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) walk(p);
+    else if (
+      /\.(br|gz)$/.test(name) &&
+      existsSync(p.replace(/\.(br|gz)$/, ''))
+    ) {
+      saved += statSync(p).size;
+      rmSync(p);
+      removed++;
+    }
+  }
+};
+walk(dist);
+console.log(
+  `Removed ${removed} pre-compressed copies (${(saved / 1048576).toFixed(1)} MB)`
+);
+
+// Manifest of engine files downloaded on first use (see main.cjs)
+const here = dirname(fileURLToPath(import.meta.url));
+writeFileSync(
+  resolve(here, '..', 'engines.json'),
+  JSON.stringify(engineInfo(), null, 2)
+);
+
 console.log('\nWeb app built into dist/');
