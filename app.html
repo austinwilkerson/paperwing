@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <title>BentoPDF</title>
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="stylesheet" href="/src/acro/app.css" />
+  </head>
+  <body>
+    <header id="titlebar">
+      <button
+        type="button"
+        class="tb-btn tb-menu"
+        id="menu-btn"
+        data-icon="menu"
+      >
+        <span>Menu</span>
+      </button>
+      <button
+        type="button"
+        class="tb-btn tb-home"
+        id="home-btn"
+        data-icon="home"
+        title="Home"
+        aria-label="Home"
+      ></button>
+      <div id="tabs" role="tablist"></div>
+      <button type="button" class="tb-create" id="create-btn" data-icon="plus">
+        <span>Create</span>
+      </button>
+      <div class="tb-drag"></div>
+      <button
+        type="button"
+        class="tb-btn"
+        id="help-btn"
+        data-icon="help"
+        title="Help"
+        aria-label="Help"
+      ></button>
+      <div id="win-controls"></div>
+    </header>
+
+    <main id="views">
+      <!-- Home -->
+      <section id="view-home" class="view">
+        <div class="home-welcome">
+          <div class="home-brand">
+            <span class="app-logo"></span>
+            <span>Welcome to BentoPDF.</span>
+          </div>
+          <label class="home-search" data-icon="search">
+            <input
+              id="home-search"
+              type="search"
+              placeholder="Search"
+              autocomplete="off"
+            />
+          </label>
+        </div>
+        <div class="home-body">
+          <nav class="home-nav">
+            <button
+              type="button"
+              class="hn-item is-active"
+              data-home-tab="recent"
+            >
+              Recent
+            </button>
+            <button type="button" class="hn-item" data-home-tab="starred">
+              Starred
+            </button>
+            <div class="hn-head">Files</div>
+            <button type="button" class="hn-item" id="open-computer">
+              Your computer
+            </button>
+          </nav>
+          <div class="home-main">
+            <div class="home-glow"></div>
+            <div class="rec-head">
+              <h2>Recommended tools for you</h2>
+              <button type="button" class="pill-btn" id="see-all-tools">
+                See all tools
+              </button>
+            </div>
+            <div class="rec-row">
+              <div class="drop-card" id="home-drop">
+                <div class="drop-inner">
+                  <div class="drop-title">Open a PDF to get started</div>
+                  <div class="drop-sub">Drag and drop a file here, or</div>
+                  <button type="button" class="accent-btn" id="home-select">
+                    Select a file
+                  </button>
+                </div>
+              </div>
+              <div class="rec-tools" id="rec-tools"></div>
+            </div>
+            <div class="recent-head">
+              <h2 id="recent-title">Recent</h2>
+              <div class="view-toggle">
+                <button
+                  type="button"
+                  class="vt-btn is-active"
+                  data-layout="list"
+                  data-icon="list"
+                  title="List view"
+                  aria-label="List view"
+                ></button>
+                <button
+                  type="button"
+                  class="vt-btn"
+                  data-layout="grid"
+                  data-icon="grid"
+                  title="Thumbnail view"
+                  aria-label="Thumbnail view"
+                ></button>
+              </div>
+            </div>
+            <div id="recent-list" class="recent-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- All tools -->
+      <section id="view-alltools" class="view">
+        <div class="at-head">
+          <h1>All tools</h1>
+          <button type="button" class="pill-btn" id="alltools-close">
+            Close
+          </button>
+        </div>
+        <div class="at-scroll">
+          <label class="at-search" data-icon="search">
+            <input
+              id="alltools-search"
+              type="search"
+              placeholder="Find any tool"
+              autocomplete="off"
+            />
+          </label>
+          <div id="alltools-groups"></div>
+        </div>
+      </section>
+
+      <!-- Document -->
+      <section id="view-doc" class="view">
+        <div id="globalbar">
+          <nav class="gb-tabs" id="gb-tabs">
+            <button type="button" data-panel="all" class="is-active">
+              All tools
+            </button>
+            <button type="button" data-panel="edit">Edit</button>
+            <button type="button" data-panel="convert">Convert</button>
+            <button type="button" data-panel="sign">E-Sign</button>
+          </nav>
+          <div class="gb-actions">
+            <button
+              type="button"
+              class="gb-find"
+              id="find-btn"
+              data-icon-after="search"
+            >
+              Find text or tools
+            </button>
+            <span class="gb-sep"></span>
+            <button
+              type="button"
+              class="tb-btn"
+              id="save-btn"
+              data-icon="save"
+              title="Save (Ctrl+S)"
+              aria-label="Save"
+            ></button>
+            <button
+              type="button"
+              class="tb-btn"
+              id="print-btn"
+              data-icon="print"
+              title="Print (Ctrl+P)"
+              aria-label="Print"
+            ></button>
+            <button type="button" class="dark-pill" id="download-btn">
+              Download
+            </button>
+          </div>
+        </div>
+        <div id="doc-body">
+          <aside id="left-panel"></aside>
+          <div id="doc-stage">
+            <div id="viewer-host"></div>
+            <div id="quickbar"></div>
+            <div id="tool-full"></div>
+          </div>
+          <aside id="right-rail"></aside>
+        </div>
+      </section>
+
+      <!-- Tool opened without a document -->
+      <section id="view-tool" class="view"></section>
+    </main>
+
+    <div id="drop-overlay"><div>Drop files to open them</div></div>
+    <div id="popover-layer"></div>
+    <div id="toasts"></div>
+    <input
+      type="file"
+      id="open-input"
+      accept="application/pdf,.pdf"
+      multiple
+      hidden
+    />
+
+    <script type="module" src="/src/acro/app.ts"></script>
+  </body>
+</html>

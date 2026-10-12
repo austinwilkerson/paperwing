@@ -8,6 +8,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import viteCompression from 'vite-plugin-compression';
 import handlebars from 'vite-plugin-handlebars';
+import { reskinPlugin } from './reskin/vite-plugin-reskin';
 import { resolve } from 'path';
 import fs from 'fs';
 import { constants as zlibConstants } from 'zlib';
@@ -540,6 +541,7 @@ export default defineConfig(() => {
           appVersion: process.env.npm_package_version || 'Unknown',
         },
       }),
+      reskinPlugin(),
       languageRouterPlugin(),
       flattenPagesPlugin(),
       rewriteHtmlPathsPlugin(),

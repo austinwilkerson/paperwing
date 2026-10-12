@@ -1,0 +1,365 @@
+/*
+ * Acrobat-style light theme for BentoPDF.
+ *
+ * Upstream is dark-only and styled with Tailwind utility classes. Tailwind v4
+ * utilities read colours from --color-* variables declared in @layer theme, so
+ * redefining those variables here (unlayered, so they always win) re-themes
+ * thousands of classes without touching the page files.
+ *
+ * Rules that must beat upstream's own unlayered CSS are prefixed with `html`
+ * for extra specificity, so stylesheet load order doesn't matter.
+ */
+
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/source-sans-3-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/source-sans-3-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/source-sans-3-latin-700-normal.woff2') format('woff2');
+}
+
+/* ------------------------------------------------------------------ */
+/* Tokens                                                              */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --rs-font: 'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
+  --rs-bg: #f5f5f5;
+  --rs-surface: #ffffff;
+  --rs-surface-hover: #f0f0f0;
+  --rs-surface-active: #e6e6e6;
+  --rs-border: #e1e1e1;
+  --rs-border-strong: #c6c6c6;
+  --rs-text: #222222;
+  --rs-text-2: #505050;
+  --rs-text-3: #6e6e6e;
+  --rs-accent: #3b63fb;
+  --rs-accent-hover: #274dea;
+  --rs-accent-down: #1d3ecf;
+  --rs-accent-tint: #edf1ff;
+  --rs-brand: #e5322d;
+
+  /* Grey ramp inverted: upstream's dark surfaces become light ones */
+  --color-gray-50: #141414;
+  --color-gray-100: #1f1f1f;
+  --color-gray-200: #2c2c2c;
+  --color-gray-300: #3e3e3e;
+  --color-gray-400: #636363;
+  --color-gray-500: #808080;
+  --color-gray-600: #d2d2d2;
+  --color-gray-700: #e6e6e6;
+  --color-gray-800: #ffffff;
+  --color-gray-900: #f5f5f5;
+  --color-gray-950: #ececec;
+
+  /* Indigo (upstream accent) becomes the Spectrum-style blue */
+  --color-indigo-50: #edf1ff;
+  --color-indigo-100: #dfe6ff;
+  --color-indigo-200: #1d3ecf;
+  --color-indigo-300: #274dea;
+  --color-indigo-400: #3b63fb;
+  --color-indigo-500: #3b63fb;
+  --color-indigo-600: #3b63fb;
+  --color-indigo-700: #274dea;
+  --color-indigo-800: #c3cfff;
+  --color-indigo-900: #e3e9ff;
+  --color-indigo-950: #f2f5ff;
+
+  /* Status colours: pale text shades <-> deep tint shades swapped */
+  --color-red-50: oklch(39.6% 0.141 25.723);
+  --color-red-100: oklch(44.4% 0.177 26.899);
+  --color-red-200: oklch(44.4% 0.177 26.899);
+  --color-red-300: oklch(50.5% 0.213 27.518);
+  --color-red-400: oklch(57.7% 0.245 27.325);
+  --color-red-800: oklch(88.5% 0.062 18.334);
+  --color-red-900: oklch(93.6% 0.032 17.717);
+  --color-red-950: oklch(97.1% 0.013 17.38);
+  --color-orange-50: oklch(40.8% 0.123 38.172);
+  --color-orange-100: oklch(47% 0.157 37.304);
+  --color-orange-200: oklch(47% 0.157 37.304);
+  --color-orange-300: oklch(55.3% 0.195 38.402);
+  --color-orange-400: oklch(64.6% 0.222 41.116);
+  --color-orange-800: oklch(90.1% 0.076 70.697);
+  --color-orange-900: oklch(95.4% 0.038 75.164);
+  --color-orange-950: oklch(98% 0.016 73.684);
+  --color-amber-50: oklch(41.4% 0.112 45.904);
+  --color-amber-100: oklch(47.3% 0.137 46.201);
+  --color-amber-200: oklch(47.3% 0.137 46.201);
+  --color-amber-300: oklch(55.5% 0.163 48.998);
+  --color-amber-400: oklch(66.6% 0.179 58.318);
+  --color-amber-800: oklch(92.4% 0.12 95.746);
+  --color-amber-900: oklch(96.2% 0.059 95.617);
+  --color-amber-950: oklch(98.7% 0.022 95.277);
+  --color-yellow-50: oklch(42.1% 0.095 57.708);
+  --color-yellow-100: oklch(47.6% 0.114 61.907);
+  --color-yellow-200: oklch(47.6% 0.114 61.907);
+  --color-yellow-300: oklch(55.4% 0.135 66.442);
+  --color-yellow-400: oklch(68.1% 0.162 75.834);
+  --color-yellow-800: oklch(94.5% 0.129 101.54);
+  --color-yellow-900: oklch(97.3% 0.071 103.193);
+  --color-yellow-950: oklch(98.7% 0.026 102.212);
+  --color-green-50: oklch(39.3% 0.095 152.535);
+  --color-green-100: oklch(44.8% 0.119 151.328);
+  --color-green-200: oklch(44.8% 0.119 151.328);
+  --color-green-300: oklch(52.7% 0.154 150.069);
+  --color-green-400: oklch(62.7% 0.194 149.214);
+  --color-green-800: oklch(92.5% 0.084 155.995);
+  --color-green-900: oklch(96.2% 0.044 156.743);
+  --color-green-950: oklch(98.2% 0.018 155.826);
+  --color-emerald-50: oklch(37.8% 0.077 168.94);
+  --color-emerald-100: oklch(43.2% 0.095 166.913);
+  --color-emerald-200: oklch(43.2% 0.095 166.913);
+  --color-emerald-300: oklch(50.8% 0.118 165.612);
+  --color-emerald-400: oklch(59.6% 0.145 163.225);
+  --color-emerald-800: oklch(90.5% 0.093 164.15);
+  --color-emerald-900: oklch(95% 0.052 163.051);
+  --color-emerald-950: oklch(97.9% 0.021 166.113);
+  --color-blue-50: oklch(37.9% 0.146 265.522);
+  --color-blue-100: oklch(42.4% 0.199 265.638);
+  --color-blue-200: oklch(42.4% 0.199 265.638);
+  --color-blue-300: oklch(48.8% 0.243 264.376);
+  --color-blue-400: oklch(54.6% 0.245 262.881);
+  --color-blue-800: oklch(88.2% 0.059 254.128);
+  --color-blue-900: oklch(93.2% 0.032 255.585);
+  --color-blue-950: oklch(97% 0.014 254.604);
+  --color-purple-50: oklch(38.1% 0.176 304.987);
+  --color-purple-100: oklch(43.8% 0.218 303.724);
+  --color-purple-200: oklch(43.8% 0.218 303.724);
+  --color-purple-300: oklch(49.6% 0.265 301.924);
+  --color-purple-400: oklch(55.8% 0.288 302.321);
+  --color-purple-800: oklch(90.2% 0.063 306.703);
+  --color-purple-900: oklch(94.6% 0.033 307.174);
+  --color-purple-950: oklch(97.7% 0.014 308.299);
+
+  /* `text-white` is used for primary text everywhere; it becomes dark.
+     Real white surfaces are restored below. */
+  --color-white: var(--rs-text);
+  --font-sans: var(--rs-font);
+
+  accent-color: var(--rs-accent);
+  color-scheme: light;
+}
+
+/* Elements on solid colour keep white text */
+:where(
+  [class~='bg-indigo-500'],
+  [class~='bg-indigo-600'],
+  [class~='bg-indigo-700'],
+  [class~='bg-blue-500'],
+  [class~='bg-blue-600'],
+  [class~='bg-blue-700'],
+  [class~='bg-red-500'],
+  [class~='bg-red-600'],
+  [class~='bg-red-700'],
+  [class~='bg-green-500'],
+  [class~='bg-green-600'],
+  [class~='bg-green-700'],
+  [class~='bg-emerald-600'],
+  [class~='bg-purple-600'],
+  [class~='bg-orange-600'],
+  [class~='bg-amber-600'],
+  [class~='bg-black/40'],
+  [class~='bg-black/60'],
+  [class~='bg-black/70'],
+  [class~='bg-black/80'],
+  .btn-gradient
+),
+:where(
+  [class~='hover:bg-indigo-500'],
+  [class~='hover:bg-indigo-600'],
+  [class~='hover:bg-indigo-700'],
+  [class~='hover:bg-red-600'],
+  [class~='hover:bg-red-700'],
+  [class~='hover:bg-blue-600'],
+  [class~='hover:bg-green-600']
+):hover {
+  --color-white: #ffffff;
+}
+
+/* ...but light surfaces nested inside them go back to dark text */
+:where(
+  [class~='bg-gray-600'],
+  [class~='bg-gray-700'],
+  [class~='bg-gray-800'],
+  [class~='bg-gray-900'],
+  [class~='bg-white']
+) {
+  --color-white: var(--rs-text);
+}
+
+html .bg-white,
+html .after\:bg-white::after {
+  background-color: #ffffff;
+}
+html .border-white,
+html .peer:checked ~ .peer-checked\:after\:border-white::after {
+  border-color: #ffffff;
+}
+
+/* Modal backdrops use Tailwind v3's bg-opacity, which v4 ignores, so they
+   render as solid panels. Make them a translucent dim like Acrobat's. */
+html [class~='bg-black'][class*='bg-opacity-'],
+html [class~='bg-gray-900'][class*='bg-opacity-'] {
+  background-color: rgb(0 0 0 / 0.45);
+}
+
+/* ------------------------------------------------------------------ */
+/* Base                                                                */
+/* ------------------------------------------------------------------ */
+
+html body {
+  font-family: var(--rs-font);
+  background-color: var(--rs-bg);
+  color: var(--rs-text);
+}
+
+html ::-webkit-scrollbar-track {
+  background: transparent;
+}
+html ::-webkit-scrollbar-thumb {
+  background: #c4c4c4;
+  border-radius: 8px;
+}
+html ::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Form fields: white with a hairline border, blue focus */
+html
+  :is(
+    input:not(
+      [type='checkbox'],
+      [type='radio'],
+      [type='range'],
+      [type='color'],
+      [type='file']
+    ),
+    select,
+    textarea
+  )[class*='bg-gray-'] {
+  background-color: #ffffff;
+  border-color: var(--rs-border-strong);
+}
+html :is(input, select, textarea):focus-visible {
+  border-color: var(--rs-accent);
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(59 99 251 / 0.25);
+}
+
+html input[type='file']::file-selector-button {
+  background: var(--rs-accent);
+  color: #fff;
+  border-radius: 999px;
+}
+html input[type='file']::file-selector-button:hover {
+  background: var(--rs-accent-hover);
+}
+
+/* Primary action button (Process / Compress / Merge...) */
+html .btn-gradient {
+  background: var(--rs-accent);
+  background-image: none;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.7rem 1.75rem;
+  font-weight: 700;
+  box-shadow: none;
+}
+html .btn-gradient:hover:not(:disabled) {
+  background: var(--rs-accent-hover);
+  box-shadow: none;
+}
+html .btn-gradient:active:not(:disabled) {
+  background: var(--rs-accent-down);
+}
+html .btn-gradient:focus-visible {
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px var(--rs-accent);
+}
+
+html .solid-spinner {
+  border-color: var(--rs-border);
+  border-bottom-color: var(--rs-accent);
+}
+
+html .nav-link,
+html .mobile-nav-link {
+  color: var(--rs-text-2);
+}
+
+/* ------------------------------------------------------------------ */
+/* Tool pages                                                          */
+/* ------------------------------------------------------------------ */
+
+html #tool-uploader {
+  max-width: 960px;
+  margin-inline: auto;
+  background: var(--rs-surface);
+  border: 1px solid var(--rs-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.04);
+}
+
+html #tool-uploader h1 {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+html #drop-zone {
+  border: 2px dashed var(--rs-border-strong);
+  border-radius: 12px;
+  background: #fafafa;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+html #drop-zone:hover,
+html #drop-zone.dragover,
+html #drop-zone.drag-over {
+  border-color: var(--rs-accent);
+  background: var(--rs-accent-tint);
+}
+html #drop-zone .ph,
+html #drop-zone svg {
+  color: var(--rs-accent);
+}
+
+/* ------------------------------------------------------------------ */
+/* Embedded in the desktop shell (app.html hosts tools in a frame)     */
+/* ------------------------------------------------------------------ */
+
+html.rs-embedded body {
+  background: var(--rs-surface);
+}
+html.rs-embedded body > nav,
+html.rs-embedded nav[data-simple-nav],
+html.rs-embedded footer,
+html.rs-embedded #back-to-tools,
+html.rs-embedded #mobile-menu {
+  display: none !important;
+}
+html.rs-embedded #tool-uploader {
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+/* The shell already shows the tool's name in its header */
+html.rs-embedded #tool-uploader h1,
+html.rs-embedded #tool-uploader h1 + p {
+  display: none;
+}
