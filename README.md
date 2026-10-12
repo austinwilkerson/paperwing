@@ -93,12 +93,16 @@ you open it. See **[Installation](docs/INSTALL.md)** for the one-time steps.
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/home.png" alt="Home view with recommended tools and recent files" /></td>
-    <td><img src="docs/screenshots/dark.png" alt="Document view in dark mode" /></td>
+    <td width="50%"><img src="docs/screenshots/home.png" alt="Home view with recommended tools and recent files" /><br /><sub><b>Home</b> — recent and starred files, recommended tools</sub></td>
+    <td width="50%"><img src="docs/screenshots/dark.png" alt="Document view in dark mode with the Edit panel" /><br /><sub><b>Dark mode</b> — follows your system automatically</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/all-tools.png" alt="All tools view" /></td>
-    <td><img src="docs/screenshots/tool-panel.png" alt="Compress tool running in the side panel" /></td>
+    <td><img src="docs/screenshots/all-tools.png" alt="All tools view" /><br /><sub><b>All tools</b> — every tool, searchable</sub></td>
+    <td><img src="docs/screenshots/tool-panel.png" alt="Compress tool running in the side panel next to the document" /><br /><sub><b>Tools on the open document</b> — results open in a new tab</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/edit-text.png" alt="Edit text and images mode" /><br /><sub><b>Edit text &amp; images</b> — right in the page</sub></td>
+    <td><img src="docs/screenshots/shortcuts.png" alt="Keyboard shortcuts dialog" /><br /><sub><b>Acrobat shortcuts</b> — including single-key tools</sub></td>
   </tr>
 </table>
 

@@ -306,6 +306,48 @@ describe('Paperwing UI', () => {
     assert.match(text, /Report\.pdf/);
   });
 
+  test('Preferences can override the system theme', async () => {
+    await openApp('light');
+    await page.keyboard.down('Control');
+    await page.keyboard.press('KeyK');
+    await page.keyboard.up('Control');
+    await page.select('.pref-select', 'dark');
+    const bg = await page.evaluate(
+      () => getComputedStyle(document.body).backgroundColor
+    );
+    assert.notEqual(
+      bg,
+      'rgb(255, 255, 255)',
+      'dark applied despite light system'
+    );
+    await page.select('.pref-select', 'system');
+    const bg2 = await page.evaluate(
+      () => getComputedStyle(document.body).backgroundColor
+    );
+    assert.equal(bg2, 'rgb(255, 255, 255)');
+    await page.evaluate(() =>
+      document.querySelector('.dlg-backdrop')?.remove()
+    );
+  });
+
+  test('"Create PDF from" converters open in their own tab without the open PDF', async () => {
+    await dropPdf('Report.pdf');
+    await page.evaluate(() =>
+      document.querySelector('#gb-tabs [data-panel="convert"]').click()
+    );
+    await page.evaluate(() =>
+      [...document.querySelectorAll('.lp-tool')]
+        .find((b) => b.textContent.trim() === 'Word to PDF')
+        .click()
+    );
+    await waitFor(page, () => document.querySelector('#view-tool.is-active'));
+    const name = await page.$eval(
+      '#tabs .tab.is-active .tab-label',
+      (e) => e.textContent
+    );
+    assert.equal(name, 'Word to PDF');
+  });
+
   test('tool pages adopt the theme and hide their own chrome when embedded', async () => {
     await page.emulateMediaFeatures([
       { name: 'prefers-color-scheme', value: 'dark' },
