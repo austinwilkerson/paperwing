@@ -89,6 +89,9 @@ export interface PageInfo {
 /** PDFium's error code for a document that needs a password */
 const PASSWORD_REQUIRED = 4;
 
+/** The viewer's annotation styles sidebar */
+const STYLES_PANEL = 'annotation-panel';
+
 /** open() was cancelled by the user (for example at the password prompt) */
 export class OpenCancelled extends Error {
   constructor() {
@@ -188,19 +191,29 @@ export class Viewer {
         }
       );
 
-      // Thumbnails/bookmarks live on the right in Acrobat, beside the rail
+      // Thumbnails/bookmarks and annotation styles live on the right, beside
+      // the rail (as in Acrobat), clear of the floating annotation toolbar
       const ui = this.cap('ui');
-      const panel = ui.getSchema().sidebars?.['sidebar-panel'];
-      if (panel) {
-        ui.mergeSchema({
-          sidebars: {
-            'sidebar-panel': {
-              ...panel,
+      const sidebars = ui.getSchema().sidebars ?? {};
+      const moved = Object.fromEntries(
+        ['sidebar-panel', STYLES_PANEL]
+          .filter((id) => sidebars[id])
+          .map((id) => [
+            id,
+            {
+              ...sidebars[id],
               position: { placement: 'right', slot: 'main', order: 0 },
             },
-          },
-        });
-      }
+          ])
+      );
+      if (Object.keys(moved).length) ui.mergeSchema({ sidebars: moved });
+
+      // The viewer's own "Annotation style" buttons always open the styles
+      // on the left, whatever the schema says: move them to the right
+      ui.onSidebarChanged?.((e: { documentId?: string }) => {
+        const ids = e?.documentId ? [e.documentId] : [...this.docIds.values()];
+        ids.forEach((id) => this.keepStylesRight(id));
+      });
 
       // Keep the viewer's own toolbars closed whenever it tries to show them
       ui.onToolbarChanged?.((e: { documentId?: string }) => {
@@ -238,6 +251,17 @@ export class Viewer {
     }
     if (d.isOverlayEnabled?.('page-controls'))
       d.disableOverlay('page-controls');
+  }
+
+  /** Moves the styles panel from the left to the right sidebar. Pressing
+   *  "Annotation style" while it's already open on the right closes it. */
+  private keepStylesRight(docId: string) {
+    const d = this.cap('ui').forDocument(docId);
+    if (d.getActiveSidebar('left', 'main') !== STYLES_PANEL) return;
+    d.closeSidebarSlot('left', 'main');
+    if (d.getActiveSidebar('right', 'main') === STYLES_PANEL)
+      d.closeSidebarSlot('right', 'main');
+    else d.toggleSidebar('right', 'main', STYLES_PANEL);
   }
 
   private tabFor(docId: string): string | undefined {
@@ -453,6 +477,11 @@ export class Viewer {
       }
     }
     d.toggleSidebar(placement, slot, sidebarId, tab);
+  }
+
+  /** Toggle the annotation styles panel (right sidebar) */
+  toggleStyles(tabId: string) {
+    this.toggleSidebar(tabId, STYLES_PANEL);
   }
 
   setTool(tabId: string, toolId: string | null) {

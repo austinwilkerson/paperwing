@@ -1364,6 +1364,12 @@ function renderRightRail(tab: Tab) {
       'rr-btn'
     ),
     iconBtn(
+      'style',
+      'Annotation style',
+      () => viewer.toggleStyles(tab.id),
+      'rr-btn'
+    ),
+    iconBtn(
       'search',
       'Find text',
       () => viewer.command(tab.id, 'panel:toggle-search'),
