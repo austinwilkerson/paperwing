@@ -17,7 +17,6 @@ Built by [Rohan Vijaykumar](https://rohanvijaykumar.cv)
 [![Built on BentoPDF](https://img.shields.io/badge/built%20on-BentoPDF-6b5bed)](https://github.com/alam00000/bentopdf)
 
 <a href="https://www.producthunt.com/products/paperwing-2?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-paperwing-2" target="_blank" rel="noopener noreferrer"><img alt="Paperwing - The free, open-source alternative to Adobe Acrobat | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1279376&amp;theme=light&amp;t=1791915874874"></a>
-<a href="https://buildrship.xyz/products/paperwing" target="_blank" rel="noopener noreferrer"><img src="https://buildrship.xyz/assets/featured-on-buildrship.png" alt="Featured on Buildrship" width="130" height="46" /></a>
 
 <br />
 
@@ -96,6 +95,29 @@ Get the latest version from the **[Releases page](https://github.com/rohanvijayk
 
 Paperwing isn't code-signed yet, so Windows SmartScreen and macOS Gatekeeper will warn the first time
 you open it. See **[Installation](docs/INSTALL.md)** for the one-time steps.
+
+## FAQ
+
+**Do I need to install LibreOffice for Word, Excel and PowerPoint conversions?**
+
+No. The conversion engine isn't in the installer, to keep the download small, but you don't install
+anything yourself: the first time you convert an Office file, Paperwing downloads it once (about
+75 MB) from this repository's GitHub Releases and verifies it against a SHA-256 hash.
+
+**Does redaction actually remove the content, or just draw a box over it?**
+
+It removes it. When you apply a redaction, the text and graphics under the marked area are deleted
+from the page itself, not just covered. Redaction doesn't touch the document's metadata (author,
+title and so on); use the **Sanitize** tool to strip that too.
+
+**Why does Windows or macOS warn me when I open it?**
+
+Paperwing isn't code-signed yet. The warning appears for any unsigned app; the full source is here,
+and you can [build it yourself](#build-from-source).
+
+**Does it work offline?**
+
+Yes, apart from the one-time engine downloads listed under [Privacy](#privacy).
 
 ## Screenshots
 
