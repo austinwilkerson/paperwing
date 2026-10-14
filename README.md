@@ -17,6 +17,7 @@ Built by [Rohan Vijaykumar](https://rohanvijaykumar.cv)
 [![Built on BentoPDF](https://img.shields.io/badge/built%20on-BentoPDF-6b5bed)](https://github.com/alam00000/bentopdf)
 
 <a href="https://www.producthunt.com/products/paperwing-2?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-paperwing-2" target="_blank" rel="noopener noreferrer"><img alt="Paperwing - The free, open-source alternative to Adobe Acrobat | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1279376&amp;theme=light&amp;t=1791915874874"></a>
+<a href="https://buildrship.xyz/products/paperwing" target="_blank" rel="noopener noreferrer"><img src="https://buildrship.xyz/assets/featured-on-buildrship.png" alt="Featured on Buildrship" width="130" height="46" /></a>
 
 <br />
 
