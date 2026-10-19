@@ -8,6 +8,18 @@ All notable changes to Paperwing are documented here. Paperwing follows
 
 ## [1.2.1] — 2026-10-19
 
+### BentoPDF 2.8.10
+
+Paperwing now builds on BentoPDF 2.8.10 (from 2.8.8):
+
+- Security hardening of Sanitize, Flatten, Redact and signature validation (hidden content and form
+  fields are removed more thoroughly, redaction also clears document data, signature checks are
+  stricter)
+- A newer PDF engine and viewer
+- Translation fixes
+- Three tools have new internal names (PDF to Word, Protect, Unlock); pinned and recently used tools
+  follow them
+
 ### Changed
 
 - Paperwing looks for updates each time it starts (at most once an hour) and every 6 hours while

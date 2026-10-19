@@ -1,6 +1,13 @@
 ## Paperwing 1.2.1
 
-Quick fixes for 1.2.
+Fixes for 1.2, and the latest BentoPDF (2.8.10) with its security hardening.
+
+### Safer
+
+- **Built on BentoPDF 2.8.10.** Sanitize, Flatten and Redact remove hidden content more
+  thoroughly, signature validation is stricter, and the PDF engine and viewer are newer.
+- **Signature checks you can trust.** Validate Signatures no longer reports a valid signature as
+  unverified when the signer's certificate isn't the first one in it.
 
 ### Better
 

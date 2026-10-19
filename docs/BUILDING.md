@@ -162,8 +162,8 @@ SHA-512, and a mismatch makes every update fail.
 ```bash
 # upstream = https://github.com/alam00000/bentopdf (fetched without its tags, so BentoPDF's
 # version tags never mix with Paperwing's)
-git fetch upstream refs/tags/v2.9.0:refs/tags/upstream/v2.9.0
-git merge upstream/v2.9.0            # the BentoPDF release you want
+git fetch upstream refs/tags/v2.8.10:refs/tags/upstream/v2.8.10
+git merge upstream/v2.8.10           # the BentoPDF release you want
 npm ci && npx vitest run && (cd desktop && npm run dev)
 ```
 
@@ -178,6 +178,11 @@ the merge reports a modify/delete conflict; resolve it by keeping them deleted:
 ```bash
 git status --short | grep '^DU' | cut -c4- | xargs git rm
 ```
+
+Upstream tests that check the removed hosting files (such as `src/tests/csp-headers.test.ts`) go
+too. If upstream renames a tool page, update the ids in `src/acro/catalog.ts` and add the old id to
+`RENAMED_TOOLS` in `src/acro/prefs.ts`, so pinned and recently used tools follow it (2.8.10
+renamed `pdf-to-docx`, `encrypt-pdf` and `decrypt-pdf`).
 
 After merging, look over a few tool pages in both themes: new upstream markup may need a small
 addition to `src/reskin/reskin.css` or `apps.css`.
