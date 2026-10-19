@@ -1,7 +1,8 @@
 /**
  * Self-update, everything short of installing: against a local test feed
- * announcing version 9.9.9, the app finds the update, downloads it, checks
- * its SHA-512 and offers a restart; Help ▸ Check for updates reports it.
+ * announcing version 9.9.9, the app finds the update and announces it,
+ * downloads nothing until Update is chosen, then downloads it, checks its
+ * SHA-512 and offers a restart; Help ▸ Check for updates reports it.
  * In this test mode (PAPERWING_UPDATE_TEST_FEED) nothing is ever installed.
  *   node bench/check-update.mjs
  */
@@ -68,21 +69,50 @@ const keep = (b) =>
 app.child.stdout.on('data', keep);
 app.child.stderr.on('data', keep);
 
-// The daily check runs a few seconds after startup on a fresh profile
+// The launch check runs a few seconds after startup: it announces the
+// update and downloads nothing until the user chooses Update
+const toastText = () =>
+  page.evaluate(
+    () => document.querySelector('#update-toast')?.textContent ?? ''
+  );
 let toast = '';
 for (let i = 0; i < 120 && !toast; i++) {
   await sleep(250);
-  toast = await page.evaluate(
-    () => document.querySelector('#update-toast')?.textContent ?? ''
-  );
+  toast = await toastText();
 }
 check(
   served.some((u) => u.startsWith('/latest.yml')),
   'checked the feed'
 );
 check(
+  /Paperwing 9\.9\.9 is available/.test(toast) && /Update/.test(toast),
+  `update announced: "${toast}"`
+);
+await sleep(1500);
+check(
+  !served.some((u) => u.startsWith(`/${name}`)),
+  'nothing downloaded before the user agrees'
+);
+check(
+  await page.evaluate(() =>
+    document.querySelector('#help-btn').classList.contains('has-update')
+  ),
+  'Help shows the update'
+);
+// Update: downloads (with progress), then offers the restart
+await page.evaluate(() =>
+  [...document.querySelectorAll('#update-toast button')]
+    .find((b) => b.textContent.trim() === 'Update')
+    .click()
+);
+toast = '';
+for (let i = 0; i < 120 && !/ready to install/.test(toast); i++) {
+  await sleep(250);
+  toast = await toastText();
+}
+check(
   served.some((u) => u.startsWith(`/${name}`)),
-  'downloaded the update'
+  'Update downloads it'
 );
 check(
   /Paperwing 9\.9\.9 is ready to install/.test(toast),

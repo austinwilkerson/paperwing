@@ -25,12 +25,15 @@ interface DesktopBridge {
   showInFolder?(path: string): Promise<void>;
   /** Clears the OS's recent documents (jump list, Dock, Open Recent) */
   clearRecentDocuments?(): Promise<void>;
-  /** Self-updating install (Windows installer): auto is false otherwise */
+  /** Self-updating install (Windows installer): auto is false otherwise.
+   *  Only checks: nothing downloads until downloadUpdate */
   checkUpdate?(): Promise<{
     auto: boolean;
     available?: boolean;
     /** Downloaded already (the restart notice is shown again) */
     ready?: boolean;
+    /** Being downloaded (the user chose Update) */
+    downloading?: boolean;
     version?: string | null;
     error?: string;
     /** When auto is false: what to download (see updates.ts) */
@@ -38,6 +41,12 @@ interface DesktopBridge {
     arch?: string;
     portable?: boolean;
   }>;
+  /** The user chose Update: download it (self-updating builds) */
+  downloadUpdate?(): Promise<{ ok: boolean; error?: string }>;
+  /** Download progress of an update the user chose */
+  onUpdateProgress?(
+    callback: (info: { percent: number | null }) => void
+  ): () => void;
   /** Quit and install the downloaded update, then restart */
   installUpdate?(): Promise<boolean>;
   /** A downloaded update is ready to install */

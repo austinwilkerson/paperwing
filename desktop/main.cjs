@@ -852,7 +852,9 @@ let updateReady = null;
 function getUpdater() {
   if (updater) return updater;
   ({ autoUpdater: updater } = require('electron-updater'));
-  updater.autoDownload = true;
+  // Nothing downloads until the user chooses Update (paperwing:update-download);
+  // once they have, the update also installs if they quit instead of restarting
+  updater.autoDownload = false;
   updater.autoInstallOnAppQuit = true;
   if (updateTestFeed) {
     // Stands in for the app-update.yml a packaged app has
@@ -878,11 +880,17 @@ updaterCacheDirName: paperwing-updater-test
     updateReady = { version: info.version };
     mainWindow?.webContents.send('paperwing:update-ready', updateReady);
   });
+  updater.on('download-progress', (p) =>
+    mainWindow?.webContents.send('paperwing:update-progress', {
+      percent: p?.percent ?? null,
+    })
+  );
   updater.on('error', (err) => console.warn('[update]', err?.message ?? err));
   return updater;
 }
+let updateDownloading = false;
 
-// The page runs the once-a-day check and Help ▸ Check for updates
+// The page checks on launch, every few hours and from Help ▸ Check for updates
 ipcMain.handle('paperwing:update-check', async (e) => {
   if (!senderIsApp(e)) return { auto: false };
   // Builds that don't update themselves download the file for their
@@ -901,12 +909,38 @@ ipcMain.handle('paperwing:update-check', async (e) => {
   }
   try {
     const result = await getUpdater().checkForUpdates();
-    // A failed download is reported through the 'error' event
-    result?.downloadPromise?.catch(() => {});
     const version = result?.updateInfo?.version ?? null;
-    return { auto: true, available: !!result?.isUpdateAvailable, version };
+    return {
+      auto: true,
+      available: !!result?.isUpdateAvailable,
+      version,
+      downloading: updateDownloading,
+    };
   } catch (err) {
     return { auto: true, error: String(err?.message ?? err) };
+  }
+});
+
+// The user chose Update: download it (progress and the "ready" notice
+// follow as events)
+ipcMain.handle('paperwing:update-download', async (e) => {
+  if (!senderIsApp(e) || !canAutoUpdate) return { ok: false };
+  if (updateReady) {
+    mainWindow?.webContents.send('paperwing:update-ready', updateReady);
+    return { ok: true };
+  }
+  if (updateDownloading) return { ok: true };
+  updateDownloading = true;
+  try {
+    // (a check first: after a restart the updater doesn't know the version)
+    const result = await getUpdater().checkForUpdates();
+    if (!result?.isUpdateAvailable) return { ok: false, error: 'No update' };
+    await updater.downloadUpdate();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err?.message ?? err) };
+  } finally {
+    updateDownloading = false;
   }
 });
 

@@ -363,14 +363,61 @@ function updateAvailableToast(update: AvailableUpdate) {
         type: 'button',
         onClick: () => {
           el.remove();
-          downloadUpdate(update);
+          getUpdate(update);
         },
       },
-      'Download'
+      update.auto ? 'Update' : 'Download'
     ),
-    h('button', { type: 'button', onClick: () => el.remove() }, 'Later')
+    h(
+      'button',
+      {
+        type: 'button',
+        onClick: () => {
+          el.remove();
+          laterFor = update.version;
+        },
+      },
+      'Later'
+    )
   );
   $('#toasts').append(el);
+}
+
+/** "Later" holds the notice back for the rest of this session (Help still
+ *  shows the update); the next launch shows it again */
+let laterFor: string | null = null;
+
+/** The user agreed to update: the self-updating build downloads it (with
+ *  progress, then the restart notice); others download the file */
+function getUpdate(update: AvailableUpdate) {
+  if (update.auto) void startUpdate(update);
+  else downloadUpdate(update);
+}
+
+/** Download progress of the update the user chose */
+let updateProgress: ReturnType<typeof statusToast> | null = null;
+
+async function startUpdate(update: AvailableUpdate) {
+  if (!desktop?.downloadUpdate || updateProgress) return;
+  updateProgress = statusToast(`Downloading Paperwing ${update.version}…`);
+  const stop = desktop.onUpdateProgress?.(({ percent }) => {
+    if (percent != null)
+      updateProgress?.update(
+        `Downloading Paperwing ${update.version}… ${Math.floor(percent)}%`
+      );
+  });
+  const result = await desktop.downloadUpdate().catch((err: unknown) => ({
+    ok: false,
+    error: String(err),
+  }));
+  stop?.();
+  updateProgress?.close();
+  updateProgress = null;
+  // (when it worked, the "ready to install" notice is showing)
+  if (!result.ok)
+    toast(
+      "Couldn't download the update. Try again from Help ▸ Check for updates."
+    );
 }
 
 /** Fetches the new version's file for this platform (the browser saves it),
@@ -385,7 +432,8 @@ function downloadUpdate(update: AvailableUpdate) {
   );
 }
 
-/** Until this build is updated, Help shows a dot and a Download entry */
+/** Until this build is updated, Help shows a dot and an Update/Download
+ *  entry */
 function showUpdateMarker(update: AvailableUpdate) {
   const help = $('#help-btn');
   help.classList.add('has-update');
@@ -3319,9 +3367,11 @@ $('#help-btn').addEventListener('click', (e) => {
     ...(update
       ? [
           {
-            label: `Download Paperwing ${update.version}`,
+            label: update.auto
+              ? `Update to Paperwing ${update.version}`
+              : `Download Paperwing ${update.version}`,
             icon: icon('download', 16),
-            onClick: () => downloadUpdate(update),
+            onClick: () => getUpdate(update),
           },
           { divider: true },
         ]
@@ -4039,7 +4089,7 @@ function showPreferences() {
       ),
       toggle(
         'Check for updates',
-        'Looks for new versions on GitHub once a day. Nothing else is sent.',
+        'Looks for new versions on GitHub when Paperwing starts and every few hours. Nothing else is sent.',
         prefs.checkUpdates,
         (v) => setPrefs({ checkUpdates: v })
       ),
@@ -4136,9 +4186,11 @@ function paletteCommands(): PaletteItem[] {
     ...(knownUpdate()
       ? [
           {
-            label: `Download Paperwing ${knownUpdate()!.version}`,
+            label: knownUpdate()!.auto
+              ? `Update to Paperwing ${knownUpdate()!.version}`
+              : `Download Paperwing ${knownUpdate()!.version}`,
             icon: icon('download', 16),
-            run: () => downloadUpdate(knownUpdate()!),
+            run: () => getUpdate(knownUpdate()!),
           },
         ]
       : []),
@@ -4611,11 +4663,12 @@ if (desktop) {
     if (engineStatus) engineStatus.update(msg);
     else engineStatus = statusToast(msg);
   });
-  // A newer version (macOS, portable): a notice when it's found, and the
+  // A newer version: a notice when it's found (until "Later"), and the
   // Help marker until this build is updated
   onUpdateAvailable((update, fresh) => {
     showUpdateMarker(update);
-    if (fresh) updateAvailableToast(update);
+    if (fresh && update.version !== laterFor && !updateProgress)
+      updateAvailableToast(update);
   });
   if (getPrefs().checkUpdates) scheduleUpdateCheck(toast);
   // The Windows installer downloaded an update: offer to restart into it
