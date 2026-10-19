@@ -8,6 +8,15 @@ All notable changes to Paperwing are documented here. Paperwing follows
 
 ## [1.2.1] — 2026-10-19
 
+### Changed
+
+- Paperwing looks for updates each time it starts (at most once an hour) and every 6 hours while
+  it's open, instead of once a day: a new version could go unnoticed for a day if Paperwing had
+  checked shortly before
+- The Windows installer no longer downloads updates by itself: a notice (and a dot on Help) says a
+  new version is available, and it downloads only when you choose **Update**, showing its
+  progress, then offers **Restart now** or **Later**
+
 ### Fixed
 
 - Keyboard shortcuts in tooltips were barely readable (grey on grey) in both light and dark

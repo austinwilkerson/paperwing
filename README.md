@@ -81,7 +81,8 @@ monthly bill. Every feature is free, and your files never leave your computer.
   recovery of documents a tool made but you hadn't saved yet if the app closes unexpectedly
 - 📍 **Pick up where you left off** — documents reopen at the page and zoom you left them at
 - 📚 **Batch tools** — run Compress, Flatten, PDF to Word and other tools on many files at once
-- 🔄 **Updates itself** (Windows installer): new versions download in the background
+- 🔄 **Updates itself** (Windows installer): tells you when there's a new version and installs it
+  when you choose **Update**
 - ↩️ **Reopen closed tab** — <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd>, just like your browser
 - 🧪 **Non-destructive tools** — results open in a new tab; your original stays untouched until you save
 - 🗂️ **Native file dialogs** and real "Save" back to the original file
@@ -165,9 +166,10 @@ The full list is in **[docs/SHORTCUTS.md](docs/SHORTCUTS.md)** and inside the ap
 All PDF processing happens on your computer. Paperwing has no accounts, analytics or telemetry.
 The only network requests it makes are:
 
-- an optional, once-a-day check of this repository's GitHub Releases for updates (can be turned off in
-  **Preferences**). The Windows installer then downloads a new version itself and installs it when
-  you restart; the portable build and macOS show a notice with a link instead;
+- an optional check of this repository's GitHub Releases for updates, when Paperwing starts (at most
+  once an hour) and every few hours while it's open (can be turned off in **Preferences**). When
+  there's a new version, Paperwing tells you and downloads nothing until you choose to: the Windows
+  installer then downloads and installs it, and the portable build and macOS download the right file;
 - the **Word, Excel and PowerPoint → PDF** converters download the LibreOffice engine (about 75 MB,
   once) from this repository's GitHub Releases the first time you use them. It's left out of the
   installer to keep the download small, and it's checked against a SHA-256 hash before it's used;

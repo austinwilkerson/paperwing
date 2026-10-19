@@ -75,12 +75,15 @@ To open PDFs with Paperwing by default: select any PDF in Finder ▸ **File ▸ 
 
 ## Updating
 
-Paperwing checks this project's GitHub Releases once a day (you can turn this off in
-**Menu ▸ Preferences**, and check any time from **Help ▸ Check for updates**).
+Paperwing checks this project's GitHub Releases when it starts (at most once an hour) and every few
+hours while it's open. You can turn this off in **Menu ▸ Preferences**, and check any time from
+**Help ▸ Check for updates**.
 
-- **Windows installer (1.1 and later):** a new version downloads in the background. When it's ready,
-  Paperwing offers **Restart now** or **Later**; if you choose Later, it installs the next time you
-  quit. Your settings, recent files and pinned tools are kept.
+- **Windows installer (1.1 and later):** Paperwing tells you a new version is available (a notice,
+  and a dot on **Help**). From 1.2.1 nothing downloads until you choose **Update**; 1.1 and 1.2.0
+  download it in the background first. When it's ready, Paperwing offers **Restart now** or
+  **Later**; if you choose Later, it installs the next time you quit. Your settings, recent files
+  and pinned tools are kept.
 - **Windows portable and macOS:** Paperwing shows a notice that stays until you choose **Download**
   or **Later**, and a dot on the **Help** button until you've updated (**Help ▸ Download
   Paperwing …**). Download fetches the file for your computer: the DMG for your Mac's chip, or the

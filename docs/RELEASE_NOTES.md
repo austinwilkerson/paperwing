@@ -1,6 +1,12 @@
 ## Paperwing 1.2.1
 
-A quick fix for 1.2.
+Quick fixes for 1.2.
+
+### Better
+
+- **Updates show up sooner, and wait for you.** Paperwing now checks each time it starts and every
+  few hours while it's open, instead of once a day. On Windows it tells you a new version is
+  available and downloads it only when you choose **Update**, with its progress shown.
 
 ### Fixed
 
@@ -10,8 +16,9 @@ A quick fix for 1.2.
 Everything new in 1.2 (Acrobat-style toolbar menus, page actions on thumbnails, recovery of unsaved
 edits, offline engines and OCR) is in the [1.2.0 release](https://github.com/rohanvijaykumar/paperwing/releases/tag/v1.2.0).
 
-Paperwing will tell you about this update (it checks once a day). Download it below and install
-it over the old version; if you have 1.1 on Windows, it updates itself. Full list of changes: [CHANGELOG.md](https://github.com/rohanvijaykumar/paperwing/blob/main/CHANGELOG.md).
+On Windows, Paperwing 1.1 and later update themselves: open Paperwing and choose **Help ▸ Check
+for updates** if it hasn't offered 1.2.1 yet. On macOS and the portable build, download it below
+and install it over the old version. Full list of changes: [CHANGELOG.md](https://github.com/rohanvijaykumar/paperwing/blob/main/CHANGELOG.md).
 
 ### Downloads
 
