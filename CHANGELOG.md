@@ -37,6 +37,8 @@ Paperwing now builds on BentoPDF 2.8.10 (from 2.8.8):
   32 and 40 px sizes used at 125–150% scaling); it's now edge to edge at every size, and Linux gets
   a full-size icon too (macOS keeps Apple's standard icon grid)
 - Tooltips could fail to appear while the document view scrolled or moved focus on its own
+- Validate Signatures showed a valid signature as unverified when its signer's certificate wasn't
+  the first one in the signature
 
 ## [1.2.0] — 2026-10-19
 
