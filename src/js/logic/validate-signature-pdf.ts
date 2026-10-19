@@ -763,14 +763,18 @@ function parsePssParams(paramsNode: forge.asn1.Asn1 | undefined): {
 function extractSpkiDer(
   p7: forge.pkcs7.PkcsSignedData & {
     rawCapture?: { certificates?: forge.asn1.Asn1 };
-  }
+  },
+  signerCert?: forge.pki.Certificate
 ): Uint8Array | null {
   try {
     const certsNode = p7.rawCapture?.certificates;
     if (!certsNode || !Array.isArray(certsNode.value) || !certsNode.value[0]) {
       return null;
     }
-    const certAsn1 = certsNode.value[0];
+    // Paperwing: the signer's own certificate, not just the first one listed
+    // (p7.certificates is parsed from these, in the same order)
+    const at = signerCert ? p7.certificates.indexOf(signerCert) : -1;
+    const certAsn1 = certsNode.value[at >= 0 ? at : 0];
     if (!Array.isArray(certAsn1.value) || !certAsn1.value[0]) return null;
     const tbs = certAsn1.value[0];
     if (!Array.isArray(tbs.value)) return null;
@@ -1046,7 +1050,7 @@ async function performCryptoVerification(
   // RSA signatures are verified with Web Crypto only: node-forge's PKCS#1 v1.5
   // verification accepts malformed DigestInfo structures (GHSA-86w9-cpqp-85rv),
   // which would let a forged signature report as valid.
-  const spkiDer = extractSpkiDer(p7);
+  const spkiDer = extractSpkiDer(p7, signerCert);
   if (!spkiDer) {
     return {
       status: 'unsupported',
