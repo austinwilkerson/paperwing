@@ -11,7 +11,7 @@ All notable changes to Paperwing are documented here. Paperwing follows
 ### Fixed
 
 - Keyboard shortcuts in tooltips were barely readable (grey on grey) in both light and dark
-  themes; they're now clear text in a high-contrast shade
+  themes; they're now shown as an outlined key in high-contrast text
 
 ## [1.2.0] — 2026-10-19
 

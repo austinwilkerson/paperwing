@@ -34,14 +34,20 @@ const STYLE = `
 }
 .pw-tip.is-above { transform: translateY(2px); }
 .pw-tip.is-shown { opacity: 1; transform: none; }
-/* The shortcut: plain text in a softer, still high-contrast shade (the
-   page's own kbd styles, a box with a border, don't apply here) */
+/* The shortcut, as a key: an outline with no fill, so its text keeps a
+   high contrast (the page's own kbd styles don't apply here) */
 .pw-tip kbd {
   all: unset;
+  display: inline-block;
   margin-left: 8px;
+  padding: 0 5px;
+  border: 1px solid light-dark(rgb(255 255 255 / 0.5), rgb(0 0 0 / 0.4));
+  border-radius: 3px;
   font: inherit;
-  font-weight: 400;
-  color: light-dark(#c9c9c9, #4b4b4b);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  color: light-dark(#e3e3e3, #333333);
   white-space: nowrap;
 }
 @media (prefers-reduced-motion: reduce) {

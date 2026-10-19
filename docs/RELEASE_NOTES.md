@@ -4,8 +4,8 @@ A quick fix for 1.2.
 
 ### Fixed
 
-- **Readable shortcuts in tooltips.** The keyboard shortcut shown next to each tooltip's label
-  was grey on grey in both light and dark themes. It's now clear, high-contrast text.
+- **Readable shortcuts in tooltips.** The keyboard shortcut next to each tooltip's label was grey
+  on grey in both light and dark themes. It's now an outlined key with clear, high-contrast text.
 
 Everything new in 1.2 (Acrobat-style toolbar menus, page actions on thumbnails, recovery of unsaved
 edits, offline engines and OCR) is in the [1.2.0 release](https://github.com/rohanvijaykumar/paperwing/releases/tag/v1.2.0).
