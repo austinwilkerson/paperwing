@@ -2,13 +2,15 @@
  * Builds the platform app icons from the artwork in build/icon.svg:
  *
  *   build/icon.ico       Windows. Tile icons there fill the whole canvas
- *                        (taskbar, Start, Explorer), so the tile is nearly
- *                        full-bleed; each size is drawn on its own so the
- *                        small ones stay sharp.
+ *                        (taskbar, Start, Explorer), so the tile is
+ *                        full-bleed at every size, like other apps'; each
+ *                        size is drawn on its own so the small ones stay
+ *                        sharp.
  *   build/icon-mac.png   macOS (electron-builder makes the .icns). Apple's
  *                        grid: an 824 px tile on the 1024 px canvas, with
- *                        the standard soft shadow.
- * build/icon.png (Linux, development) is the artwork as drawn, unchanged.
+ *                        the standard soft shadow, as every Mac app has.
+ *   build/icon-linux.png Linux (taskbars and docks): full-bleed, 512 px.
+ * build/icon.png (development) is the artwork as drawn, unchanged.
  *
  *   node scripts/gen-icons.mjs        (CHROME_PATH if Chrome isn't found)
  */
@@ -71,11 +73,10 @@ async function png(markup, size) {
 const WIN_SIZES = [16, 20, 24, 32, 40, 48, 64, 96, 128, 256];
 const images = [];
 for (const size of WIN_SIZES) {
-  // A hair of margin from 32 px up; none below, where it would blur
-  const inset = size >= 32 ? Math.round(size / 64) : 0;
+  // Edge to edge: any margin makes it look smaller than its neighbours
   images.push({
     size,
-    data: await png(iconSvg(size, { inset, radius: 0.2 }), size),
+    data: await png(iconSvg(size, { inset: 0, radius: 0.2 }), size),
   });
 }
 const header = Buffer.alloc(6 + 16 * images.length);
@@ -104,5 +105,13 @@ writeFileSync(
   await png(iconSvg(1024, { inset: 100, radius: 0.225, shadow: true }), 1024)
 );
 
+// Linux: full-bleed too
+writeFileSync(
+  join(build, 'icon-linux.png'),
+  await png(iconSvg(512, { inset: 0, radius: 0.2 }), 512)
+);
+
 await browser.close();
-console.log('icon.ico (' + WIN_SIZES.join(', ') + ' px) and icon-mac.png');
+console.log(
+  'icon.ico (' + WIN_SIZES.join(', ') + ' px), icon-mac.png, icon-linux.png'
+);

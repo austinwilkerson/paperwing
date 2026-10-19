@@ -527,7 +527,11 @@ function createWindow() {
       : path.join(
           __dirname,
           'build',
-          process.platform === 'win32' ? 'icon.ico' : 'icon.png'
+          process.platform === 'win32'
+            ? 'icon.ico'
+            : process.platform === 'linux'
+              ? 'icon-linux.png'
+              : 'icon.png'
         ),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
