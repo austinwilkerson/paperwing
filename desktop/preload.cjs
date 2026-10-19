@@ -19,6 +19,13 @@ contextBridge.exposeInMainWorld('paperwing', {
     ipcRenderer.invoke('paperwing:clear-recent-documents'),
   checkUpdate: () => ipcRenderer.invoke('paperwing:update-check'),
   installUpdate: () => ipcRenderer.invoke('paperwing:update-install'),
+  downloadUpdate: () => ipcRenderer.invoke('paperwing:update-download'),
+  onUpdateProgress: (callback) => {
+    const listener = (_e, info) => callback(info);
+    ipcRenderer.on('paperwing:update-progress', listener);
+    return () =>
+      ipcRenderer.removeListener('paperwing:update-progress', listener);
+  },
   onUpdateReady: (callback) => {
     const listener = (_e, info) => callback(info);
     ipcRenderer.on('paperwing:update-ready', listener);

@@ -6,6 +6,40 @@ All notable changes to Paperwing are documented here. Paperwing follows
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-10-19
+
+### BentoPDF 2.8.10
+
+Paperwing now builds on BentoPDF 2.8.10 (from 2.8.8):
+
+- Security hardening of Sanitize, Flatten, Redact and signature validation (hidden content and form
+  fields are removed more thoroughly, redaction also clears document data, signature checks are
+  stricter)
+- A newer PDF engine and viewer
+- Translation fixes
+- Three tools have new internal names (PDF to Word, Protect, Unlock); pinned and recently used tools
+  follow them
+
+### Changed
+
+- Paperwing looks for updates each time it starts (at most once an hour) and every 6 hours while
+  it's open, instead of once a day: a new version could go unnoticed for a day if Paperwing had
+  checked shortly before
+- The Windows installer no longer downloads updates by itself: a notice (and a dot on Help) says a
+  new version is available, and it downloads only when you choose **Update**, showing its
+  progress, then offers **Restart now** or **Later**
+
+### Fixed
+
+- Keyboard shortcuts in tooltips were barely readable (grey on grey) in both light and dark
+  themes; they're now shown as an outlined key in high-contrast text
+- The Windows taskbar icon was still a few pixels smaller than other apps' (a 1 px margin in the
+  32 and 40 px sizes used at 125–150% scaling); it's now edge to edge at every size, and Linux gets
+  a full-size icon too (macOS keeps Apple's standard icon grid)
+- Tooltips could fail to appear while the document view scrolled or moved focus on its own
+- Validate Signatures showed a valid signature as unverified when its signer's certificate wasn't
+  the first one in the signature
+
 ## [1.2.0] — 2026-10-19
 
 ### Added

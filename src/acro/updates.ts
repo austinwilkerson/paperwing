@@ -1,11 +1,13 @@
 /**
  * Update check against the project's GitHub Releases.
  *
- * The Windows installer updates itself (desktop/main.cjs): the check starts
- * a background download, and the app offers a restart once it's ready. Other
- * builds (portable, macOS, the browser) are told a new version exists: the
- * workspace shows a notice that stays, and a marker until they've updated
- * (onUpdateAvailable), and Download fetches the file for their platform.
+ * Paperwing checks on each launch and every few hours while open
+ * (scheduleUpdateCheck). A newer version is announced, never downloaded
+ * by itself: the workspace shows a notice that stays, and a marker until
+ * this build is updated (onUpdateAvailable). On the Windows installer,
+ * Update downloads it (desktop/main.cjs) and then offers a restart; on
+ * other builds (portable, macOS, the browser), Download fetches the file
+ * for their platform.
  */
 import { desktop } from './desktop';
 
@@ -20,7 +22,11 @@ type Toast = (
 const LAST_CHECK_KEY = 'paperwing:lastUpdateCheck';
 /** The newer version last seen, so the marker survives restarts */
 const AVAILABLE_KEY = 'paperwing:availableUpdate';
-const DAY = 24 * 60 * 60 * 1000;
+const HOUR = 60 * 60 * 1000;
+/** Each launch checks, unless a check ran this recently */
+const MIN_GAP = HOUR;
+/** And a window left open checks again this often */
+const RECHECK_EVERY = 6 * HOUR;
 
 /** A newer version than this one, for builds that don't update themselves */
 export interface AvailableUpdate {
@@ -29,6 +35,8 @@ export interface AvailableUpdate {
   page: string;
   /** The file for this platform, when the release has one */
   download: string | null;
+  /** This build updates itself once the user agrees (Windows installer) */
+  auto?: boolean;
 }
 
 /** What the desktop app says about itself (main.cjs) */
@@ -121,15 +129,21 @@ export async function checkForUpdates(
   const auto = await desktop?.checkUpdate?.().catch((): null => null);
   if (auto?.auto) {
     markChecked();
-    if (!manual) return; // a downloaded update announces itself
-    if (auto.error) toast("Couldn't check for updates. Are you online?");
-    else if (auto.ready)
-      return; // its restart notice is showing
-    else if (auto.available)
-      toast(
-        `Downloading Paperwing ${auto.version}. You'll be asked to restart when it's ready.`
-      );
-    else toast(`You're up to date (version ${__PAPERWING_VERSION__})`);
+    if (auto.error) {
+      if (manual) toast("Couldn't check for updates. Are you online?");
+    } else if (auto.ready || auto.downloading) {
+      // Its restart notice, or its download progress, is showing
+    } else if (auto.available && auto.version) {
+      // Nothing downloads until the user chooses Update
+      announce({
+        version: auto.version,
+        page: `https://github.com/${__PAPERWING_REPO__}/releases/tag/v${auto.version}`,
+        download: null,
+        auto: true,
+      });
+    } else if (manual) {
+      toast(`You're up to date (version ${__PAPERWING_VERSION__})`);
+    }
     return;
   }
   try {
@@ -166,14 +180,22 @@ function markChecked() {
   }
 }
 
-/** Check quietly at most once a day, a few seconds after startup */
-export function scheduleUpdateCheck(toast: Toast) {
-  let last = 0;
+function lastChecked(): number {
   try {
-    last = Number(localStorage.getItem(LAST_CHECK_KEY)) || 0;
+    return Number(localStorage.getItem(LAST_CHECK_KEY)) || 0;
   } catch {
-    /* storage unavailable */
+    return 0;
   }
-  if (Date.now() - last < DAY) return;
-  setTimeout(() => void checkForUpdates(toast), 8000);
+}
+
+/**
+ * Checks a few seconds after each launch (unless one ran within the hour)
+ * and every few hours while the window stays open
+ */
+export function scheduleUpdateCheck(toast: Toast) {
+  const due = () => Date.now() - lastChecked() >= MIN_GAP;
+  if (due()) setTimeout(() => void checkForUpdates(toast), 8000);
+  setInterval(() => {
+    if (due()) void checkForUpdates(toast);
+  }, RECHECK_EVERY);
 }

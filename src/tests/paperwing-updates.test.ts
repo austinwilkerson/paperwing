@@ -2,27 +2,23 @@
  * Updates for builds that don't update themselves (macOS, Windows portable):
  * the file to download, and the newer version remembered across restarts.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 (globalThis as any).__PAPERWING_VERSION__ = '1.2.0';
 (globalThis as any).__PAPERWING_REPO__ = 'owner/paperwing';
 
-// The desktop app's bridge: a Mac build, which doesn't update itself
-vi.mock('../acro/desktop', () => ({
-  desktop: {
-    checkUpdate: async () => ({
-      auto: false,
-      platform: 'darwin',
-      arch: 'arm64',
-    }),
-  },
-}));
+// The desktop app's bridge: a Mac build (doesn't update itself) unless a
+// test says otherwise
+const { checkUpdate } = vi.hoisted(() => ({ checkUpdate: vi.fn() }));
+vi.mock('../acro/desktop', () => ({ desktop: { checkUpdate } }));
+const MAC = { auto: false, platform: 'darwin', arch: 'arm64' };
 
 import {
   checkForUpdates,
   knownUpdate,
   onUpdateAvailable,
   pickAsset,
+  scheduleUpdateCheck,
 } from '../acro/updates';
 
 const asset = (name: string) => ({
@@ -66,6 +62,7 @@ describe('a newer version is remembered until this build is updated', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.restoreAllMocks();
+    checkUpdate.mockResolvedValue(MAC);
   });
 
   it('announces a newer release with the file for this platform, and keeps it', async () => {
@@ -102,5 +99,49 @@ describe('a newer version is remembered until this build is updated', () => {
     );
     expect(knownUpdate()).toBeNull();
     expect(localStorage.getItem('paperwing:availableUpdate')).toBeNull();
+  });
+});
+
+describe('when Paperwing checks', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers();
+    checkUpdate.mockReset();
+    checkUpdate.mockResolvedValue({ auto: true, available: false });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('checks on each launch, even when the last check was earlier today', async () => {
+    localStorage.setItem(
+      'paperwing:lastUpdateCheck',
+      String(Date.now() - 2 * 60 * 60 * 1000)
+    );
+    scheduleUpdateCheck(() => {});
+    await vi.advanceTimersByTimeAsync(9000);
+    expect(checkUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips the launch check right after another one, and checks again hours later', async () => {
+    localStorage.setItem('paperwing:lastUpdateCheck', String(Date.now()));
+    scheduleUpdateCheck(() => {});
+    await vi.advanceTimersByTimeAsync(9000);
+    expect(checkUpdate).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(6 * 60 * 60 * 1000);
+    expect(checkUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it('announces an update to a self-updating build without downloading it', async () => {
+    checkUpdate.mockResolvedValue({
+      auto: true,
+      available: true,
+      version: '1.3.0',
+    });
+    const seen: Array<[string, boolean | undefined]> = [];
+    const stop = onUpdateAvailable((u) => seen.push([u.version, u.auto]));
+    const said: string[] = [];
+    await checkForUpdates((m) => said.push(m));
+    stop();
+    expect(seen).toEqual([['1.3.0', true]]);
+    expect(said).toEqual([]);
   });
 });

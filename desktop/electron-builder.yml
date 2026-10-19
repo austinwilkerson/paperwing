@@ -108,7 +108,7 @@ dmg:
       path: /Applications
 
 linux:
-  icon: build/icon.png
+  icon: build/icon-linux.png
   category: Office
   target:
     - AppImage

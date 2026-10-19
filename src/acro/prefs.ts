@@ -41,10 +41,37 @@ const DEFAULTS: Prefs = {
 
 let cache: Prefs | null = null;
 
+/** Tools BentoPDF has renamed (old page id → new): pinned and recently
+ *  used tools saved under the old name follow them */
+const RENAMED_TOOLS: Record<string, string> = {
+  'pdf-to-docx': 'pdf-to-word',
+  'encrypt-pdf': 'protect-pdf',
+  'decrypt-pdf': 'unlock-pdf',
+};
+
+function renameTools(prefs: Prefs): Prefs {
+  const ids = (list: string[]) => [
+    ...new Set(list.map((id) => RENAMED_TOOLS[id] ?? id)),
+  ];
+  const keys = <T>(map: Record<string, T>) =>
+    Object.fromEntries(
+      Object.entries(map).map(([id, v]) => [RENAMED_TOOLS[id] ?? id, v])
+    );
+  return {
+    ...prefs,
+    pinnedTools: ids(prefs.pinnedTools),
+    recentTools: ids(prefs.recentTools),
+    recentToolNames: keys(prefs.recentToolNames),
+  };
+}
+
 export function getPrefs(): Prefs {
   if (cache) return cache;
   try {
-    cache = { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || '{}') };
+    cache = renameTools({
+      ...DEFAULTS,
+      ...JSON.parse(localStorage.getItem(KEY) || '{}'),
+    });
   } catch {
     cache = { ...DEFAULTS };
   }

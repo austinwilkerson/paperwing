@@ -34,10 +34,21 @@ const STYLE = `
 }
 .pw-tip.is-above { transform: translateY(2px); }
 .pw-tip.is-shown { opacity: 1; transform: none; }
+/* The shortcut, as a key: an outline with no fill, so its text keeps a
+   high contrast (the page's own kbd styles don't apply here) */
 .pw-tip kbd {
-  margin-left: 6px;
+  all: unset;
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 5px;
+  border: 1px solid light-dark(rgb(255 255 255 / 0.5), rgb(0 0 0 / 0.4));
+  border-radius: 3px;
   font: inherit;
-  opacity: 0.68;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  color: light-dark(#e3e3e3, #333333);
+  white-space: nowrap;
 }
 @media (prefers-reduced-motion: reduce) {
   .pw-tip { transition: none; }
@@ -193,12 +204,33 @@ export function initTooltips() {
     const t = tipTarget(el);
     if (t) schedule(t);
   });
-  document.addEventListener('focusout', hide);
+  // Only when the hovered control itself loses focus, or something around
+  // it scrolls: the document view scrolls and moves focus on its own
+  // (restoring a position, smooth scrolling), which mustn't cancel a tooltip
+  // on the rail or the toolbar
+  const around = (e: Event) => {
+    const n = e.target;
+    return (
+      !!target &&
+      (n === document ||
+        n === window ||
+        (n instanceof Node && (n === target || n.contains(target))))
+    );
+  };
+  document.addEventListener('focusout', (e) => {
+    if (around(e)) hide();
+  });
   for (const type of ['pointerdown', 'keydown', 'wheel']) {
     document.addEventListener(type, hide, { capture: true, passive: true });
   }
   window.addEventListener('blur', hide);
-  window.addEventListener('scroll', hide, { capture: true, passive: true });
+  window.addEventListener(
+    'scroll',
+    (e) => {
+      if (around(e)) hide();
+    },
+    { capture: true, passive: true }
+  );
   // Titles set later (re-rendered controls) are picked up on hover; the
   // browser's own tooltip would win the race, so new ones are moved now
   new MutationObserver((records) => {

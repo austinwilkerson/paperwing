@@ -1,47 +1,34 @@
-## Paperwing 1.2.0
+## Paperwing 1.2.1
 
-Works like you'd expect, everywhere: smarter toolbars, page actions on thumbnails, and every
-tool offline.
+Fixes for 1.2, and the latest BentoPDF (2.8.10) with its security hardening.
 
-### New
+### Safer
 
-- **Toolbar buttons that remember.** Click the small arrow on Highlight, Draw, Comment, Text or
-  Select (or right-click it) to pick a related tool: Underline, Rectangle, Arrow, Callout, Hand
-  and more. The tool you pick stays on the button.
-- **Tooltips** on every button, with its keyboard shortcut.
-- **Page actions in the thumbnails.** Right-click a page to rotate, insert, extract, move or
-  delete it, or drag it to a new place. Ctrl+click or Shift+click to work on several pages at
-  once, and drop a PDF onto the thumbnails to insert its pages there. Ctrl+Z undoes it.
-- **Your edits survive a crash.** Unsaved changes are kept safe every few seconds and come back
-  when Paperwing reopens.
-- **No more lost work in tools.** Closing Edit a PDF, Prepare a form or Organize pages with
-  unsaved changes asks first.
-- **Recent files in the taskbar and Dock.** Right-click Paperwing's icon to reopen them.
-- **Updates you won't miss (macOS and portable).** The notice stays until you act on it, Help
-  shows a dot until you've updated, and Download fetches the right file for your Mac or PC.
-- **Truer fonts.** PDFs that rely on standard fonts they don't include (Times, Arial,
-  Courier, Calibri, Cambria…) now keep their look and spacing.
+- **Built on BentoPDF 2.8.10.** Sanitize, Flatten and Redact remove hidden content more
+  thoroughly, signature validation is stricter, and the PDF engine and viewer are newer.
+- **Signature checks you can trust.** Validate Signatures no longer reports a valid signature as
+  unverified when the signer's certificate isn't the first one in it.
 
 ### Better
 
-- **Advanced tools work offline.** The engines for PDF to Word, PDF/A, Font to Outline, OCR (in
-  English) and the other advanced tools now come with the app instead of downloading on first
-  use.
-- **Cleaner tools.** No more duplicate Download buttons, second upload boxes or leftover website
-  text: each tool shows just what it needs.
-- **Crisper icon** in the Windows taskbar, the same size as other apps'.
+- **Updates show up sooner, and wait for you.** Paperwing now checks each time it starts and every
+  few hours while it's open, instead of once a day. On Windows it tells you a new version is
+  available and downloads it only when you choose **Update**, with its progress shown.
 
 ### Fixed
 
-- Tools no longer flash their upload screen before your document appears.
-- Copying text from some PDFs gave tabs instead of spaces, and search missed phrases in them.
-- The side rail and tool list didn't respond while a full-page tool was open.
-- Edit a PDF: changing a font now works, System fonts no longer shows an error, and exported text
-  keeps its lines.
-- Fill & Sign, Fill a form and Timestamp work again.
+- **Readable shortcuts in tooltips.** The keyboard shortcut next to each tooltip's label was grey
+  on grey in both light and dark themes. It's now an outlined key with clear, high-contrast text.
+- **Full-size taskbar icon.** On Windows, Paperwing's icon is now the same size as other apps'
+  (it was a few pixels smaller at common display scaling). If the taskbar still shows the old one
+  after updating, unpin Paperwing and pin it again; Windows caches icons.
 
-Paperwing will tell you about this update (it checks once a day). Download it below and install
-it over the old version; if you have 1.1 on Windows, it updates itself. Full list of changes: [CHANGELOG.md](https://github.com/rohanvijaykumar/paperwing/blob/main/CHANGELOG.md).
+Everything new in 1.2 (Acrobat-style toolbar menus, page actions on thumbnails, recovery of unsaved
+edits, offline engines and OCR) is in the [1.2.0 release](https://github.com/rohanvijaykumar/paperwing/releases/tag/v1.2.0).
+
+On Windows, Paperwing 1.1 and later update themselves: open Paperwing and choose **Help ▸ Check
+for updates** if it hasn't offered 1.2.1 yet. On macOS and the portable build, download it below
+and install it over the old version. Full list of changes: [CHANGELOG.md](https://github.com/rohanvijaykumar/paperwing/blob/main/CHANGELOG.md).
 
 ### Downloads
 
