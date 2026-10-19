@@ -204,12 +204,33 @@ export function initTooltips() {
     const t = tipTarget(el);
     if (t) schedule(t);
   });
-  document.addEventListener('focusout', hide);
+  // Only when the hovered control itself loses focus, or something around
+  // it scrolls: the document view scrolls and moves focus on its own
+  // (restoring a position, smooth scrolling), which mustn't cancel a tooltip
+  // on the rail or the toolbar
+  const around = (e: Event) => {
+    const n = e.target;
+    return (
+      !!target &&
+      (n === document ||
+        n === window ||
+        (n instanceof Node && (n === target || n.contains(target))))
+    );
+  };
+  document.addEventListener('focusout', (e) => {
+    if (around(e)) hide();
+  });
   for (const type of ['pointerdown', 'keydown', 'wheel']) {
     document.addEventListener(type, hide, { capture: true, passive: true });
   }
   window.addEventListener('blur', hide);
-  window.addEventListener('scroll', hide, { capture: true, passive: true });
+  window.addEventListener(
+    'scroll',
+    (e) => {
+      if (around(e)) hide();
+    },
+    { capture: true, passive: true }
+  );
   // Titles set later (re-rendered controls) are picked up on hover; the
   // browser's own tooltip would win the race, so new ones are moved now
   new MutationObserver((records) => {
