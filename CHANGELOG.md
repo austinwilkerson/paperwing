@@ -33,6 +33,10 @@ Paperwing now builds on BentoPDF 2.8.10 (from 2.8.8):
 
 - Keyboard shortcuts in tooltips were barely readable (grey on grey) in both light and dark
   themes; they're now shown as an outlined key in high-contrast text
+- The Windows taskbar icon was still a few pixels smaller than other apps' (a 1 px margin in the
+  32 and 40 px sizes used at 125–150% scaling); it's now edge to edge at every size, and Linux gets
+  a full-size icon too (macOS keeps Apple's standard icon grid)
+- Tooltips could fail to appear while the document view scrolled or moved focus on its own
 
 ## [1.2.0] — 2026-10-19
 

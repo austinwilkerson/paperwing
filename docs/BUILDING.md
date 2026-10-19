@@ -94,9 +94,10 @@ uses it only once it's uploaded in the repository's **Settings ▸ General ▸ S
 | `npm run pack`          | Unpacked app folder only, for quick checks                             |
 
 Packaging is configured in `desktop/electron-builder.yml`. The app icons are generated from
-`desktop/build/icon.svg` by `node scripts/gen-icons.mjs`: `icon.png` (1024 px), `icon.ico` for
-Windows (16–256 px, nearly edge to edge, like other Windows apps) and `icon-mac.png` (on Apple's
-icon grid, with its margin and shadow). Run it again after changing the SVG.
+`desktop/build/icon.svg` by `node scripts/gen-icons.mjs`: `icon.ico` for Windows (16–256 px, edge
+to edge like other Windows apps), `icon-mac.png` (on Apple's icon grid, with its margin and shadow)
+and `icon-linux.png` (512 px, edge to edge). `icon.png` is the artwork as drawn. Run it again after
+changing the SVG.
 
 ### Keeping the download small
 

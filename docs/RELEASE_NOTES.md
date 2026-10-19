@@ -19,6 +19,9 @@ Fixes for 1.2, and the latest BentoPDF (2.8.10) with its security hardening.
 
 - **Readable shortcuts in tooltips.** The keyboard shortcut next to each tooltip's label was grey
   on grey in both light and dark themes. It's now an outlined key with clear, high-contrast text.
+- **Full-size taskbar icon.** On Windows, Paperwing's icon is now the same size as other apps'
+  (it was a few pixels smaller at common display scaling). If the taskbar still shows the old one
+  after updating, unpin Paperwing and pin it again; Windows caches icons.
 
 Everything new in 1.2 (Acrobat-style toolbar menus, page actions on thumbnails, recovery of unsaved
 edits, offline engines and OCR) is in the [1.2.0 release](https://github.com/rohanvijaykumar/paperwing/releases/tag/v1.2.0).
