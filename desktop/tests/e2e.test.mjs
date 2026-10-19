@@ -419,8 +419,12 @@ describe('Paperwing UI', () => {
     });
     const handle = await page.waitForSelector('#f');
     const frame = await handle.contentFrame();
-    await frame.waitForFunction(() =>
-      document.documentElement.classList.contains('rs-embedded')
+    // (the class is set before the first paint, before the stylesheets have
+    // loaded: check once the page has)
+    await frame.waitForFunction(
+      () =>
+        document.documentElement.classList.contains('rs-embedded') &&
+        document.readyState === 'complete'
     );
     const state = await frame.evaluate(() => ({
       navHidden: [...document.querySelectorAll('body > nav')].every(

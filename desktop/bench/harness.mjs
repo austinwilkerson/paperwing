@@ -4,6 +4,7 @@
  */
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -21,7 +22,22 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /** Profiles and Chromium temp files go here (BENCH_TMP overrides the OS temp dir) */
 const TMP_ROOT = process.env.BENCH_TMP || tmpdir();
 
-let port = Number(process.env.BENCH_PORT) || 9400;
+let port = Number(process.env.BENCH_PORT) || 0;
+
+/** A port nothing is listening on. Fixed ports collided when tests ran back
+ *  to back: the previous app could still hold one, and the next app then
+ *  never showed its window */
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.unref();
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const { port: free } = server.address();
+      server.close(() => resolve(free));
+    });
+  });
+}
 
 /**
  * Starts the app. Resolves once the main window is visible, with the
@@ -35,7 +51,7 @@ export async function launch({
   waitFor = 'main window shown',
 } = {}) {
   const userData = profile ?? mkdtempSync(join(TMP_ROOT, 'pw-bench-'));
-  const debugPort = ++port;
+  const debugPort = port ? ++port : await freePort();
   // Keep rendering even if the window ends up behind others while measuring
   const flags = [
     '--disable-features=CalculateNativeWinOcclusion',
