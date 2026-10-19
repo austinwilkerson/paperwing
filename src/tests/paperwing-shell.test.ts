@@ -4,7 +4,7 @@
  */
 import { readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 (globalThis as any).__PAPERWING_VERSION__ = '1.2.0';
 (globalThis as any).__PAPERWING_REPO__ = 'owner/paperwing';
@@ -215,6 +215,23 @@ describe('preferences', () => {
   beforeEach(() => {
     localStorage.clear();
     setPrefs({ pinnedTools: [], recentTools: [] });
+  });
+
+  it('follows tools BentoPDF renamed in saved preferences', async () => {
+    localStorage.setItem(
+      'paperwing:prefs',
+      JSON.stringify({
+        pinnedTools: ['encrypt-pdf', 'merge-pdf'],
+        recentTools: ['pdf-to-docx', 'decrypt-pdf', 'pdf-to-word'],
+        recentToolNames: { 'pdf-to-docx': 'Export a PDF' },
+      })
+    );
+    vi.resetModules();
+    const fresh = await import('../acro/prefs');
+    const prefs = fresh.getPrefs();
+    expect(prefs.pinnedTools).toEqual(['protect-pdf', 'merge-pdf']);
+    expect(prefs.recentTools).toEqual(['pdf-to-word', 'unlock-pdf']);
+    expect(prefs.recentToolNames).toEqual({ 'pdf-to-word': 'Export a PDF' });
   });
 
   it('pins and unpins tools', () => {

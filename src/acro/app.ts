@@ -1503,7 +1503,7 @@ function toolRow(tab: Tab, tool: AppTool, redraw: () => void) {
         // "Export a PDF" lists every export format, like Acrobat
         if (
           tab.panel === 'all' &&
-          tool.id === 'pdf-to-docx' &&
+          tool.id === 'pdf-to-word' &&
           tool.name === 'Export a PDF' &&
           !tab.blank
         ) {

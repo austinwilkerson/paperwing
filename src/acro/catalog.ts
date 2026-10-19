@@ -135,7 +135,7 @@ function alias(id: string, name: string, desc?: string): AppTool {
 /** "All tools" list in the left panel (Acrobat's order) */
 export const quickTools = (): AppTool[] => [
   alias(
-    'pdf-to-docx',
+    'pdf-to-word',
     'Export a PDF',
     'Convert PDFs to Word, Excel, images and more.'
   ),
@@ -165,7 +165,7 @@ export const quickTools = (): AppTool[] => [
     'Scan & OCR',
     'Make scanned documents searchable and editable.'
   ),
-  alias('encrypt-pdf', 'Protect a PDF', 'Add a password to restrict access.'),
+  alias('protect-pdf', 'Protect a PDF', 'Add a password to restrict access.'),
   byId.get('redact')!,
   alias(
     'compress-pdf',
@@ -239,7 +239,7 @@ export const recommendedTools = (): AppTool[] => [
   ),
   alias('merge-pdf', 'Combine files', 'Merge files into a single PDF.'),
   alias('compress-pdf', 'Compress a PDF', 'Make large PDFs smaller.'),
-  alias('pdf-to-docx', 'Export a PDF', 'Convert a PDF to Word.'),
+  alias('pdf-to-word', 'Export a PDF', 'Convert a PDF to Word.'),
 ];
 
 /** Every tool, Acrobat's sections first: the order tool search ranks results in */
@@ -257,7 +257,7 @@ export const allToolGroups = (): ToolGroup[] => [
     name: 'Convert',
     tools: [
       alias('image-to-pdf', 'Create a PDF'),
-      alias('pdf-to-docx', 'Export a PDF'),
+      alias('pdf-to-word', 'Export a PDF'),
       alias('merge-pdf', 'Combine files'),
       alias('ocr-pdf', 'Scan & OCR'),
       alias('compress-pdf', 'Compress a PDF'),
@@ -273,7 +273,7 @@ export const allToolGroups = (): ToolGroup[] => [
   {
     name: 'Protect',
     tools: [
-      alias('encrypt-pdf', 'Protect a PDF'),
+      alias('protect-pdf', 'Protect a PDF'),
       byId.get('redact')!,
       alias('compare-pdfs', 'Compare files'),
     ],
