@@ -34,10 +34,15 @@ const STYLE = `
 }
 .pw-tip.is-above { transform: translateY(2px); }
 .pw-tip.is-shown { opacity: 1; transform: none; }
+/* The shortcut: plain text in a softer, still high-contrast shade (the
+   page's own kbd styles, a box with a border, don't apply here) */
 .pw-tip kbd {
-  margin-left: 6px;
+  all: unset;
+  margin-left: 8px;
   font: inherit;
-  opacity: 0.68;
+  font-weight: 400;
+  color: light-dark(#c9c9c9, #4b4b4b);
+  white-space: nowrap;
 }
 @media (prefers-reduced-motion: reduce) {
   .pw-tip { transition: none; }
