@@ -257,6 +257,46 @@ describe('Paperwing UI', () => {
     await page.keyboard.press('Escape');
   });
 
+  test('Select works on a desktop with a touchscreen, even when the viewer default is Hand', async () => {
+    const previousPage = page;
+    const context = await browser.createBrowserContext();
+    page = await context.newPage();
+    try {
+      await page.setViewport({ width: 1366, height: 860, hasTouch: true });
+      await openApp();
+      await dropPdf('Touchscreen.pdf');
+      const mode = () =>
+        page.evaluate(() => {
+          const v = window.__acro.viewer;
+          const id = [...v.docIds.values()][0];
+          return v.cap('interaction-manager').forDocument(id).getActiveMode();
+        });
+      assert.ok(await page.evaluate(() => navigator.maxTouchPoints > 0));
+      assert.equal(
+        await mode(),
+        'pointerMode',
+        'opening a PDF selects text by default'
+      );
+      await page.keyboard.press('h');
+      assert.equal(await mode(), 'panMode', 'H still enables Hand');
+      // Reproduce another plugin changing the default: V must still select.
+      await page.evaluate(() => {
+        window.__acro.viewer
+          .cap('interaction-manager')
+          .setDefaultMode('panMode');
+      });
+      await page.keyboard.press('v');
+      assert.equal(
+        await mode(),
+        'pointerMode',
+        'V explicitly enables text selection'
+      );
+    } finally {
+      await context.close();
+      page = previousPage;
+    }
+  });
+
   test('tracks unsaved changes and confirms before closing', async () => {
     await page.keyboard.press('d');
     const box = await page.$eval('#viewer-host', (e) => {
