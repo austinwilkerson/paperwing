@@ -256,6 +256,8 @@ export class Viewer {
         wasmUrl,
         fontFallback,
         tabBar: 'never',
+        // A touchscreen does not mean the desktop Select tool should pan.
+        pan: { defaultMode: 'never' },
         documentManager: { maxDocuments: 50 },
         theme: viewerTheme(),
         zoom: {
@@ -729,7 +731,9 @@ export class Viewer {
     const id = this.docIds.get(tabId);
     if (!id || !this.registry) return;
     const im = this.cap('interaction-manager').forDocument(id);
-    if (mode === 'select') im.activateDefaultMode();
+    // The viewer's default can be changed by other plugins (e.g. touch pan).
+    // Select must always enable text selection, regardless of that default.
+    if (mode === 'select') im.activate('pointerMode');
     else im.activate(mode === 'hand' ? 'panMode' : 'marqueeZoom');
   }
 
